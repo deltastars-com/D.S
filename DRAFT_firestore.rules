@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Global Deny
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Shared Helpers
+    // ===============================================================
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Hardcoded highly secure admin check
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "deltastars777@gmail.com" || 
+        request.auth.token.email == "deltastars90@gmail.com" || 
+        request.auth.token.email == "marketing@deltastars-ksa.com" || 
+        request.auth.token.email == "vipservicesyemen@outlook.sa" ||
+        request.auth.token.email == "developer@deltastars-ksa.com" ||
+        request.auth.token.email == "info@deltastars-ksa.com"
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // ===============================================================
+    // Entity Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string && data.uid.size() < 128 &&
+             data.email is string && data.email.size() < 128 &&
+             data.role in ['admin', 'ops', 'developer', 'gm', 'vip', 'client', 'marketing', 'delegate', 'branch_agent', 'accountant', 'qa'];
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name_ar', 'name_en', 'price']) &&
+             data.id is number &&
+             data.price is number && data.price >= 0;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'customerId', 'total', 'status', 'createdAt']) &&
+             data.customerId is string &&
+             data.total is number &&
+             data.status is string;
+    }
+
+    // ===============================================================
+    // Collection Match Blocks
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isSignedIn() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid || 
+        isAdmin() ||
+        resource.data.driverId == request.auth.uid ||
+        (resource.data.branchId != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBranchId == resource.data.branchId)
+      );
+      allow create: if isSignedIn() && isValidOrder(request.resource.data);
+      allow update: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid || 
+        isAdmin() ||
+        resource.data.driverId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /branches/{branchId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /legal_pages/{pageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /units/{unitId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || resource.data.user_id == 'admin' || isAdmin());
+      allow write: if isSignedIn();
+    }
+
+    match /price_update_requests/{requestId} {
+      allow read: if isAdmin();
+      allow write: if isSignedIn();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.customerId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

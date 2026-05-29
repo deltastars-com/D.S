@@ -1,0 +1,293 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A product available in the store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "name_ar": { "type": "string" },
+        "name_en": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "image": { "type": "string" },
+        "unit_ar": { "type": "string" },
+        "unit_en": { "type": "string" },
+        "description_ar": { "type": "string" },
+        "description_en": { "type": "string" },
+        "features_ar": { "type": "string" },
+        "features_en": { "type": "string" },
+        "origin_ar": { "type": "string" },
+        "origin_en": { "type": "string" },
+        "stock_quantity": { "type": "number" },
+        "min_threshold": { "type": "number" },
+        "gallery": { "type": "array", "items": { "type": "string" } },
+        "extra_settings": { "type": "object" }
+      },
+      "required": ["id", "name_ar", "name_en", "category", "price", "image", "unit_ar", "unit_en", "stock_quantity", "min_threshold"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "preparing", "setup", "shipped", "delivered", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "paymentMethod": { "type": "string" },
+        "branchId": { "type": "string" },
+        "driverId": { "type": "string" }
+      },
+      "required": ["id", "customerId", "items", "total", "status", "createdAt"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "A delivery driver",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["online", "offline", "busy"] },
+        "location": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the system",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "ops", "developer", "gm", "vip", "client", "marketing", "branch_manager"] },
+        "displayName": { "type": "string" },
+        "phone": { "type": "string" },
+        "companyName": { "type": "string" },
+        "creditLimit": { "type": "number" },
+        "currentBalance": { "type": "number" },
+        "clientStatus": { "type": "string", "enum": ["active", "inactive", "pending"] }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A product category",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "label_ar": { "type": "string" },
+        "label_en": { "type": "string" },
+        "icon": { "type": "string" },
+        "order": { "type": "number" },
+        "isVisible": { "type": "boolean" }
+      },
+      "required": ["key", "label_ar", "label_en", "icon", "order", "isVisible"]
+    },
+    "Unit": {
+      "title": "Unit",
+      "description": "A product unit",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "name_ar": { "type": "string" },
+        "name_en": { "type": "string" },
+        "base_factor": { "type": "number" }
+      },
+      "required": ["code", "name_ar", "name_en", "base_factor"]
+    },
+    "HomeSection": {
+      "title": "HomeSection",
+      "description": "A section on the home page",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "title_ar": { "type": "string" },
+        "title_en": { "type": "string" },
+        "isVisible": { "type": "boolean" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "type", "title_ar", "title_en", "isVisible", "order"]
+    },
+    "Shipment": {
+      "title": "Shipment",
+      "description": "A shipment tracking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "agentId": { "type": "string" },
+        "currentStatus": { "type": "string" },
+        "history": { "type": "array", "items": { "type": "object" } },
+        "location": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } }
+      },
+      "required": ["id", "orderId", "currentStatus"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "A customer complaint",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "orderId": { "type": "string" },
+        "type": { "type": "string" },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "customerId", "status", "message", "createdAt"]
+    },
+    "Branch": {
+      "title": "Branch",
+      "description": "A sovereign branch of Delta Stars",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name_ar": { "type": "string" },
+        "city": { "type": "string" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["id", "name_ar", "city"]
+    },
+    "UserRole": {
+      "title": "UserRole",
+      "description": "User roles and permissions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "developer", "branch_manager"] },
+        "biometric_enabled": { "type": "boolean" },
+        "permissions": { "type": "object" }
+      },
+      "required": ["userId", "email", "role"]
+    },
+    "FinancialLedger": {
+      "title": "FinancialLedger",
+      "description": "Integrated accounting system ledger",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "branch_id": { "type": "string" },
+        "order_id": { "type": "string" },
+        "transaction_type": { "type": "string", "enum": ["income", "expense", "refund"] },
+        "amount": { "type": "number" },
+        "tax_amount": { "type": "number" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "branch_id", "transaction_type", "amount", "tax_amount", "created_at"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "A discount coupon",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "discount": { "type": "number" },
+        "type": { "type": "string", "enum": ["percentage", "fixed"] },
+        "expiry": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "code", "discount", "type", "expiry", "isActive"]
+    },
+    "Ad": {
+      "title": "Ad",
+      "description": "A promotional advertisement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title_ar": { "type": "string" },
+        "title_en": { "type": "string" },
+        "image": { "type": "string" },
+        "link": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "title_ar", "title_en", "image", "isActive", "order"]
+    },
+    "LegalPage": {
+      "title": "LegalPage",
+      "description": "A legal information page",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title_ar": { "type": "string" },
+        "title_en": { "type": "string" },
+        "content_ar": { "type": "string" },
+        "content_en": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title_ar", "title_en", "content_ar", "content_en", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of products"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of orders"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of users"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of product categories"
+    },
+    "/units/{unitId}": {
+      "schema": "Unit",
+      "description": "Collection of product units"
+    },
+    "/homeSections/{sectionId}": {
+      "schema": "HomeSection",
+      "description": "Collection of home page sections"
+    },
+    "/shipments/{shipmentId}": {
+      "schema": "Shipment",
+      "description": "Collection of shipments"
+    },
+    "/drivers/{driverId}": {
+      "schema": "Driver",
+      "description": "Collection of drivers and their locations"
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Collection of complaints"
+    },
+    "/branches/{branchId}": {
+      "schema": "Branch",
+      "description": "Collection of sovereign branches"
+    },
+    "/user_roles/{userId}": {
+      "schema": "UserRole",
+      "description": "Collection of user roles and permissions"
+    },
+    "/financial_ledger/{ledgerId}": {
+      "schema": "FinancialLedger",
+      "description": "Collection of financial ledger records"
+    },
+    "/coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Collection of discount coupons"
+    },
+    "/ads/{adId}": {
+      "schema": "Ad",
+      "description": "Collection of promotional advertisements"
+    },
+    "/legal/{pageId}": {
+      "schema": "LegalPage",
+      "description": "Collection of legal information pages"
+    }
+  }
+}

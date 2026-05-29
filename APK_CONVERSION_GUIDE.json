@@ -1,0 +1,41 @@
+{
+  "app_name": "DeltaStars",
+  "domain": "deltastars.store",
+  "pwa_url": "https://deltastars.store",
+  "conversion_steps": [
+    {
+      "step": 1,
+      "action": "Visit https://www.pwabuilder.com",
+      "description": "Enter your domain deltastars.com and click Start."
+    },
+    {
+      "step": 2,
+      "action": "Review PWA Manifest",
+      "description": "The system will detect the manifest.json we created. Ensure all icons and screenshots are green."
+    },
+    {
+      "step": 3,
+      "action": "Professional Conversion via Capacitor",
+      "description": "Run 'npm install @capacitor/core @capacitor/cli' then 'npx cap init'. This creates a native Android/iOS wrapper for your PWA."
+    },
+    {
+      "step": 4,
+      "action": "Build & Sync",
+      "description": "Run 'npm run build' then 'npx cap add android' and 'npx cap copy'. Open in Android Studio to generate the signed APK."
+    }
+  ],
+  "native_features_enabled": [
+    "Geolocation (Native High Accuracy)",
+    "Push Notifications (Firebase Cloud Messaging)",
+    "Deep Linking (deltastars.com/*)",
+    "Offline Mode (Service Worker v25.0)"
+  ],
+  "technical_metadata": {
+    "package_id": "com.deltastars.app",
+    "version": "25.0.0",
+    "theme_color": "#1a3a1a",
+    "background_color": "#ffffff",
+    "display_mode": "standalone"
+  },
+  "note": "تم إعداد كافة الملفات (manifest.json, service-worker.js) بأعلى معايير الجودة لتكون جاهزة للتحويل الفوري إلى تطبيق أندرويد و آيفون احترافي."
+}

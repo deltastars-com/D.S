@@ -1,0 +1,44 @@
+{
+  "appId": "com.deltastars.store",
+  "appName": "DeltaStars",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "cleartext": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#2d5c2d",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Geolocation": {
+      "permissions": {
+        "ios": "location",
+        "android": "location"
+      }
+    }
+  },
+  "ios": {
+    "scheme": "DeltaStars",
+    "contentInset": "always",
+    "allowsLinkPreview": true,
+    "limitsNavigationsToAppBoundDomains": true,
+    "includeDisplaysInWebView": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true,
+    "useLegacyBridge": false
+  }
+}

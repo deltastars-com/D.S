@@ -1,0 +1,8 @@
+{
+  "name": "delta-stars-workspace",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd delta-stars-v2 && npm run build",
+    "install:all": "cd delta-stars-v2 && npm install"
+  }
+}

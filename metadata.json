@@ -1,0 +1,15 @@
+{
+  "name": "نجوم دلتا | Delta Stars",
+  "description": "نجوم دلتا للتجارة - شريكك الأمثل للخضروات والفواكه والتمور عالية الجودة بالمملكة العربية السعودية",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation",
+  { "role": "admin" }  "microphone"
+  ],
+  "majorCapabilities": [
+    "AI-Powered Intelligent Assistant (Oday) with Gemini Integration",
+    "Real-time Inventory-Aware Q&A (RAG)",
+    "Bilingual Support (Arabic/English)",
+    "Dynamic Localized Company Information Context"
+  ]
+}

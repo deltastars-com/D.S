@@ -1,0 +1,52 @@
+# codemagic.yaml
+workflows:
+  vite-store-android:
+    name: متجري - APK
+    environment:
+      android: true
+      groups:
+        - supabase_vars
+        - authentica_vars
+        - moyasar_vars
+      vars:
+        PACKAGE_NAME: com.yourstore.app
+      node: 22.0.0
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+    scripts:
+      - name: تثبيت التبعيات
+        script: npm ci
+      
+      - name: بناء Vite
+        script: npm run build
+      
+      - name: مزامنة Capacitor
+        script: |
+          npx cap copy android
+          npx cap sync android
+      
+      - name: بناء APK
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+      
+      - name: نسخ APK
+        script: |
+          mkdir -p /tmp/artifacts
+          cp android/app/build/outputs/apk/release/*.apk /tmp/artifacts/
+    
+    artifacts:
+      - /tmp/artifacts/*.apk
+    
+    publishing:
+      email:
+        recipients:
+          - your@email.com
+        notify:
+          success: true
+          failure: true

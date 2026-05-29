@@ -1,0 +1,170 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == "deltastars777@gmail.com" || 
+        request.auth.token.email == "deltastars90@gmail.com" || 
+        request.auth.token.email == "marketing@deltastars-ksa.com" || 
+        request.auth.token.email == "developer@deltastars-ksa.com" ||
+        request.auth.token.email == "vipservicesyemen@outlook.sa" ||
+        request.auth.token.email == "info@deltastars-ksa.com"
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // ===============================================================
+    // Validation Helpers
+    // ===============================================================
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name_ar', 'name_en', 'category', 'price', 'image', 'unit_ar', 'unit_en', 'stock_quantity', 'min_threshold']) &&
+             data.id is number &&
+             data.name_ar is string && data.name_ar.size() > 0 && data.name_ar.size() <= 200 &&
+             data.name_en is string && data.name_en.size() > 0 && data.name_en.size() <= 200 &&
+             data.price is number && data.price >= 0 &&
+             data.stock_quantity is number && data.stock_quantity >= 0;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'customerId', 'items', 'total', 'status', 'createdAt']) &&
+             data.id is string && isValidId(data.id) &&
+             data.customerId is string && isValidId(data.customerId) &&
+             data.total is number && data.total >= 0 &&
+             data.status in ['pending', 'preparing', 'setup', 'shipped', 'delivered', 'cancelled'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string && isValidId(data.uid) &&
+             data.email is string && data.email.size() <= 256 &&
+             data.role in ['admin', 'ops', 'developer', 'gm', 'vip', 'client', 'marketing', 'branch_manager'];
+    }
+
+    // ===============================================================
+    // Collection Match Rules
+    // ===============================================================
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.customerId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidOrder(incoming()) && incoming().customerId == request.auth.uid;
+      allow update: if isVerified() && isValidOrder(incoming()) && (
+        (incoming().customerId == existing().customerId && existing().customerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'items', 'total'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isVerified() && isValidUser(incoming()) && (request.auth.uid == userId || isAdmin());
+      allow update: if isVerified() && isValidUser(incoming()) && (request.auth.uid == userId || isAdmin()) && incoming().uid == existing().uid;
+      allow delete: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /units/{unitId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /homeSections/{sectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /shipments/{shipmentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /drivers/{driverId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isOwner(driverId);
+    }
+
+    match /complaints/{complaintId} {
+      allow read: if isSignedIn() && (resource.data.customerId == request.auth.uid || isAdmin());
+      allow create: if isVerified();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /branches/{branchId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /user_roles/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /financial_ledger/{ledgerId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /legal/{pageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Connection test path
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "دلتا ستارز للتجارة",
+  "short_name": "DeltaStars",
+  "description": "أفضل متجر إلكتروني للخضروات والفواكه الطازجة في المملكة العربية السعودية",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1a3a1a",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "https://lh3.googleusercontent.com/d/1-0qvsPmpVVnWdGJHrlJ4rbtecG-i5n4l",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://lh3.googleusercontent.com/d/1-0qvsPmpVVnWdGJHrlJ4rbtecG-i5n4l",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "المنتجات",
+      "url": "/products",
+      "icons": [{ "src": "https://lh3.googleusercontent.com/d/1-0qvsPmpVVnWdGJHrlJ4rbtecG-i5n4l", "sizes": "96x96" }]
+    },
+    {
+      "name": "تتبع الطلب",
+      "url": "/trackOrder",
+      "icons": [{ "src": "https://lh3.googleusercontent.com/d/1-0qvsPmpVVnWdGJHrlJ4rbtecG-i5n4l", "sizes": "96x96" }]
+    }
+  ],
+  "categories": ["shopping", "business", "food"]
+}

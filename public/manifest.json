@@ -1,0 +1,23 @@
+{
+  "name": "دلتا ستارز",
+  "short_name": "DeltaStars",
+  "description": "شريكك المثالي للخضروات والفواكه والتمور عالية الجودة.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#064e3b",
+  "background_color": "#ffffff",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "https://lh3.googleusercontent.com/d/1OBquSKoTI_W3RGMHpCENpzvl-atd-qP4",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://lh3.googleusercontent.com/d/1OBquSKoTI_W3RGMHpCENpzvl-atd-qP4",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
