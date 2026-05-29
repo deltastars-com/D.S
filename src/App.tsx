@@ -1,5 +1,4 @@
 import AdminGuard from './admin/AdminGuard';
-import AdminDashboard from './admin/Dashboard';
 import TicketDetails from './admin/TicketDetails';
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
@@ -145,7 +144,7 @@ const AppContent: React.FC = () => {
 
       // === صفحات الدعم الجديدة (Support Tickets) ===
       case 'admin_support':
-        return <AdminDashboard user={user as any} />;
+        return <AdminDashboardPage user={user as any} onNavigate={handleNavigate} />;
       case 'admin_ticket':
         return <TicketDetails ticketId={pageParams?.id} />;
 
