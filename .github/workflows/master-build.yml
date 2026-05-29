@@ -1,0 +1,57 @@
+name: Delta Stars Global Build (Web & APK)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # يسمح لك بتشغيل البناء يدوياً بضغطة زر
+
+jobs:
+  build-and-release:
+    name: Build Web & Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 جلب ملفات المشروع
+        uses: actions/checkout@v4
+
+      - name: ⚙️ إعداد بيئة Node.js الحديثة
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 تثبيت الحزم والاعتماديات
+        run: npm install
+
+      - name: 🌐 بناء نسخة الويب (Vite)
+        run: npm run build
+        
+      - name: 💾 حفظ نسخة الويب الجاهزة
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeltaStars-Web-Ready
+          path: dist/
+
+      - name: ☕ إعداد بيئة Java (لتطبيق الأندرويد)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 📱 تهيئة Capacitor للأندرويد
+        run: |
+          npm install @capacitor/cli @capacitor/android
+          npx cap add android || true
+          npx cap sync android
+
+      - name: 🛠️ بناء تطبيق الأندرويد (APK)
+        working-directory: ./android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: 📲 استخراج وحفظ ملف الـ APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeltaStars-App.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
