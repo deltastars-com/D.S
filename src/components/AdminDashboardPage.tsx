@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UsersIcon, ShoppingBagIcon, CreditCardIcon, ChatBubbleLeftEllipsisIcon } from '@heroicons/react/24/outline'; // استخدم الأيقونات المناسبة
 import { motion, AnimatePresence } from 'motion/react';
 import { useFirebase, useI18n, useToast } from './lib/contexts';
 import QualityManagement from './QualityManagement';
@@ -11,7 +10,6 @@ import SecuritySection from './SecuritySection';
 import { AIInsightsSection } from './AIInsightsSection';
 import { PredictiveOrdersSection } from './PredictiveOrdersSection';
 import { ShipmentMap } from './ShipmentMap';
-// Around the orders list in overview tab
 import AccountingSection from './AccountingSection';
 import { DeveloperDashboard } from './DeveloperDashboard';
 import { ProductManagementSection } from './ProductManagementSection';
@@ -62,7 +60,6 @@ import { WarehouseView } from './WarehouseView';
 import { WarehouseControlCenter } from './WarehouseControlCenter';
 import { BRANCH_LOCATIONS } from './constants';
 
-// --- المكون الأول (تم إصلاح خطأ التصدير المكرر فيه دون حذفه) ---
 interface AdminDashboardPageProps {
   user: any;
   onNavigate: (page: string, params?: any) => void;
@@ -75,24 +72,23 @@ const AdminDashboardPageInternal: React.FC<AdminDashboardPageProps> = ({ user, o
         <h1 className="text-3xl font-black mb-2">مرحباً {user?.name || 'المشرف'}</h1>
         <p className="text-gray-500 mb-8">لوحة تحكم مدير المتجر</p>
 
-        {/* بطاقات الإحصائيات (مثال) - يمكنك تعديلها حسب احتياجك */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
-            <ShoppingBagIcon className="w-10 h-10 text-primary" />
+            <PackageIcon className="w-10 h-10 text-primary" />
             <div>
               <p className="text-gray-500">الطلبات اليوم</p>
               <p className="text-2xl font-bold">24</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
-            <UsersIcon className="w-10 h-10 text-primary" />
+            <UserIcon className="w-10 h-10 text-primary" />
             <div>
               <p className="text-gray-500">العملاء الجدد</p>
               <p className="text-2xl font-bold">12</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
-            <CreditCardIcon className="w-10 h-10 text-primary" />
+            <DollarSignIcon className="w-10 h-10 text-primary" />
             <div>
               <p className="text-gray-500">الإيرادات</p>
               <p className="text-2xl font-bold">8,450 ر.س</p>
@@ -100,18 +96,16 @@ const AdminDashboardPageInternal: React.FC<AdminDashboardPageProps> = ({ user, o
           </div>
         </div>
 
-        {/* زر الدعم (Support) */}
         <div className="flex justify-end mb-6">
           <button
             onClick={() => onNavigate('admin_support')}
             className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl shadow hover:shadow-md transition-all"
           >
-            <ChatBubbleLeftEllipsisIcon className="w-6 h-6" />
+            <MessageSquareIcon className="w-6 h-6" />
             <span className="font-bold">إدارة تذاكر الدعم</span>
           </button>
         </div>
 
-        {/* باقي محتوى لوحة التحكم (مثل قائمة الطلبات، المنتجات، إلخ) يمكنك إضافتها هنا */}
         <div className="bg-white rounded-2xl shadow p-6">
           <p className="text-gray-500 text-center py-20">المحتوى الرئيسي للوحة التحكم (مثل قائمة الطلبات أو المنتجات) يمكن وضعه هنا.</p>
         </div>
@@ -120,8 +114,6 @@ const AdminDashboardPageInternal: React.FC<AdminDashboardPageProps> = ({ user, o
   );
 };
 
-
-// --- المكون الثاني والرئيسي للوحة التحكم (هذا هو التصدير الافتراضي الصحيح) ---
 interface AdminDashboardProps {
   user: any;
 }
@@ -188,7 +180,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const handleVerifyBiometric = async () => {
     setIsVerifyingBiometric(true);
     try {
-      // Logic for biometric verification
       await new Promise(resolve => setTimeout(resolve, 1500));
       setIsSecondaryVerified(true);
       addToast(language === 'ar' ? 'تم التحقق بالبصمة' : 'Biometric verification successful', 'success');
@@ -202,10 +193,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   useEffect(() => {
     if (!db || !user) return;
     
-    // Check if user has admin/management role to determine query scope
     const isManagement = ['admin', 'developer', 'marketing', 'ops', 'branch_agent'].includes(user?.role || user?.type || '');
-    
-    // If management, we can query general notifications. Otherwise, only user-specific.
     const notificationsCollection = collection(db, 'notifications');
     let q;
     
@@ -214,14 +202,12 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     } else if (user?.uid) {
       q = query(notificationsCollection, where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(10));
     } else {
-      // If no management and no uid, don't try to query
       return;
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const newNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Professional Sound Notification Logic
       const hasNewOrder = newNotifications.some((n: any) => !n.isRead && (n.type === 'order' || n.metadata?.sound === 'alert_new_order'));
       if (hasNewOrder && notifications.length > 0) {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
@@ -231,7 +217,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       setNotifications(newNotifications);
       setUnreadCount(newNotifications.filter((n: any) => !n.isRead).length);
     }, (error) => {
-      // Silence if not permitted or handle properly
       if (error.code === 'permission-denied') {
         console.warn('Admin notifications restricted - possibly non-admin role accessing dashboard components');
       } else {
@@ -241,7 +226,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     return () => unsubscribe();
   }, [db, notifications.length, user]);
 
-  // Form State
   const [formData, setFormData] = useState<any>({
     name_ar: '',
     name_en: '',
@@ -255,7 +239,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     unit_en: 'kg'
   });
 
-  // --- Tabs Configuration based on Role and Permissions ---
   const tabs = useMemo(() => {
     const userPermissions = user?.permissions || [];
     
@@ -292,21 +275,12 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     });
   }, [user.type, user.permissions]);
 
-  // --- Stats Calculation ---
   const stats = useMemo(() => {
     const totalRevenue = orders?.reduce((acc, order) => acc + (order.total || 0), 0) || 0;
     const pendingOrders = orders?.filter(o => o.status === 'pending').length || 0;
     const totalProducts = products?.length || 0;
     return { totalRevenue, pendingOrders, totalProducts };
   }, [orders, products]);
-
-  const filteredItems = useMemo(() => {
-    return products?.filter(item => 
-      (item.name_ar || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (item.name_en || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.category || '').toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
-  }, [products, searchTerm]);
 
   const handleStatusChange = async (orderId: string, newStatus: any) => {
     try {
@@ -317,79 +291,8 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     }
   };
 
-  const handleAssignBranch = async (orderId: string, branchId: string) => {
-    try {
-      await updateOrder(orderId, { branchId });
-      addToast(language === 'ar' ? 'تم تعيين الفرع للطلب' : 'Branch assigned to order', 'success');
-    } catch (err) {
-      addToast(language === 'ar' ? 'خطأ في التعيين' : 'Assignment error', 'error');
-    }
-  };
-
-  const handleDeleteItem = async (id: number) => {
-    if (user.type === 'marketing') {
-      addToast(language === 'ar' ? 'لا تملك صلاحية الحذف' : 'No delete permission', 'error');
-      return;
-    }
-    if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذا المنتج؟' : 'Are you sure you want to delete this product?')) {
-      try {
-        await deleteProduct(id);
-        addToast(language === 'ar' ? 'تم حذف المنتج' : 'Product deleted', 'success');
-      } catch (err) {
-        addToast(language === 'ar' ? 'خطأ في الحذف' : 'Delete error', 'error');
-      }
-    }
-  };
-
-  const handleSaveProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingItem) {
-        await updateProduct(editingItem.id, formData);
-        addToast(language === 'ar' ? 'تم تحديث المنتج' : 'Product updated', 'success');
-      } else {
-        await addProduct(formData);
-        addToast(language === 'ar' ? 'تم إضافة المنتج' : 'Product added', 'success');
-      }
-      setIsAddingItem(false);
-      setEditingItem(null);
-      setFormData({
-        name_ar: '',
-        name_en: '',
-        price: 0,
-        category: 'vegetables',
-        image: '',
-        description_ar: '',
-        description_en: '',
-        stock_quantity: 100,
-        unit_ar: 'كيلو',
-        unit_en: 'kg'
-      });
-    } catch (err) {
-      addToast(language === 'ar' ? 'خطأ في الحفظ' : 'Save error', 'error');
-    }
-  };
-
-  const openEditModal = (item: any) => {
-    setEditingItem(item);
-    setFormData({
-      name_ar: item.name_ar,
-      name_en: item.name_en,
-      price: item.price,
-      category: item.category,
-      image: item.image,
-      description_ar: item.description_ar || '',
-      description_en: item.description_en || '',
-      stock_quantity: item.stock_quantity || 100,
-      unit_ar: item.unit_ar || 'كيلو',
-      unit_en: item.unit_en || 'kg'
-    });
-    setIsAddingItem(true);
-  };
-
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col lg:flex-row font-tajawal relative overflow-hidden">
-      {/* Secondary Auth Overlay */}
       {!isSecondaryVerified && (
         <div className="fixed inset-0 z-[1000] bg-primary-dark flex items-center justify-center p-6 backdrop-blur-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-secondary/10"></div>
@@ -469,7 +372,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         </div>
       )}
 
-      {/* Mobile Sidebar Toggle */}
       <button 
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         className="lg:hidden fixed bottom-6 right-6 z-[600] bg-secondary text-white p-4 rounded-full shadow-2xl border-4 border-white"
@@ -477,7 +379,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         {isSidebarOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
       </button>
 
-      {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-[550] lg:hidden backdrop-blur-sm"
@@ -485,7 +386,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 right-0 z-[560] w-72 md:w-80 bg-primary text-white p-6 md:p-10 flex flex-col border-l-[6px] md:border-l-[10px] border-secondary transition-transform duration-500 ease-in-out
         lg:relative lg:translate-x-0 lg:z-0
@@ -521,9 +421,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto w-full">
-        {/* غرفة العمليات - الهيدر */}
         <div className="bg-primary-dark p-6 md:p-8 rounded-3xl md:rounded-[3rem] shadow-2xl mb-8 md:mb-10 flex flex-col md:flex-row justify-between items-center gap-6 border-r-8 md:border-r-[12px] border-secondary overflow-hidden relative group">
           <div className="absolute inset-0 bg-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
           <div className="text-center md:text-right">
@@ -534,7 +432,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
             </p>
           </div>
           <div className="flex gap-4 items-center">
-            {/* Refresh Button */}
             <button 
               onClick={() => window.location.reload()}
               className="p-4 bg-blue-50 rounded-2xl border-2 border-blue-100 text-blue-700 hover:bg-blue-100 transition-all flex items-center gap-2"
@@ -544,7 +441,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
               <span className="hidden md:inline font-black text-xs">تحديث</span>
             </button>
 
-            {/* Notification Bell */}
             <div className="relative group">
               <button className="p-4 bg-green-50 rounded-2xl border-2 border-green-100 text-green-700 hover:bg-green-100 transition-all relative">
                 <BellIcon className="w-6 h-6" />
@@ -555,7 +451,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                 )}
               </button>
               
-              {/* Notification Dropdown */}
               <div className="absolute top-full left-0 mt-4 w-80 bg-white rounded-3xl shadow-4xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-6">
                 <h4 className="font-black text-primary mb-4 flex items-center justify-between">
                   {language === 'ar' ? 'الإشعارات' : 'Notifications'}
@@ -773,7 +668,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           </div>
         )}
 
-        {/* Order Details Modal */}
         {isOrderModalOpen && selectedOrder && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[500] flex items-center justify-center p-4 md:p-10 overflow-y-auto">
             <div className="bg-white w-full max-w-4xl rounded-[3rem] overflow-hidden shadow-2xl animate-scale-in">
