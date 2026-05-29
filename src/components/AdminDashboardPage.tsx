@@ -1,65 +1,5 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UsersIcon, ShoppingBagIcon, CreditCardIcon, ChatBubbleLeftEllipsisIcon } from '@heroicons/react/24/outline'; // استخدم الأيقونات المناسبة
-
-interface AdminDashboardPageProps {
-  user: any;
-  onNavigate: (page: string, params?: any) => void;
-}
-
-const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ user, onNavigate }) => {
-  return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-black mb-2">مرحباً {user?.name || 'المشرف'}</h1>
-        <p className="text-gray-500 mb-8">لوحة تحكم مدير المتجر</p>
-
-        {/* بطاقات الإحصائيات (مثال) - يمكنك تعديلها حسب احتياجك */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
-            <ShoppingBagIcon className="w-10 h-10 text-primary" />
-            <div>
-              <p className="text-gray-500">الطلبات اليوم</p>
-              <p className="text-2xl font-bold">24</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
-            <UsersIcon className="w-10 h-10 text-primary" />
-            <div>
-              <p className="text-gray-500">العملاء الجدد</p>
-              <p className="text-2xl font-bold">12</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
-            <CreditCardIcon className="w-10 h-10 text-primary" />
-            <div>
-              <p className="text-gray-500">الإيرادات</p>
-              <p className="text-2xl font-bold">8,450 ر.س</p>
-            </div>
-          </div>
-        </div>
-
-        {/* زر الدعم (Support) */}
-        <div className="flex justify-end mb-6">
-          <button
-            onClick={() => onNavigate('admin_support')}
-            className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl shadow hover:shadow-md transition-all"
-          >
-            <ChatBubbleLeftEllipsisIcon className="w-6 h-6" />
-            <span className="font-bold">إدارة تذاكر الدعم</span>
-          </button>
-        </div>
-
-        {/* باقي محتوى لوحة التحكم (مثل قائمة الطلبات، المنتجات، إلخ) يمكنك إضافتها هنا */}
-        <div className="bg-white rounded-2xl shadow p-6">
-          <p className="text-gray-500 text-center py-20">المحتوى الرئيسي للوحة التحكم (مثل قائمة الطلبات أو المنتجات) يمكن وضعه هنا.</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default AdminDashboardPage;
-import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useFirebase, useI18n, useToast } from './lib/contexts';
 import QualityManagement from './QualityManagement';
@@ -122,6 +62,66 @@ import { WarehouseView } from './WarehouseView';
 import { WarehouseControlCenter } from './WarehouseControlCenter';
 import { BRANCH_LOCATIONS } from './constants';
 
+// --- المكون الأول (تم إصلاح خطأ التصدير المكرر فيه دون حذفه) ---
+interface AdminDashboardPageProps {
+  user: any;
+  onNavigate: (page: string, params?: any) => void;
+}
+
+const AdminDashboardPageInternal: React.FC<AdminDashboardPageProps> = ({ user, onNavigate }) => {
+  return (
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-black mb-2">مرحباً {user?.name || 'المشرف'}</h1>
+        <p className="text-gray-500 mb-8">لوحة تحكم مدير المتجر</p>
+
+        {/* بطاقات الإحصائيات (مثال) - يمكنك تعديلها حسب احتياجك */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
+            <ShoppingBagIcon className="w-10 h-10 text-primary" />
+            <div>
+              <p className="text-gray-500">الطلبات اليوم</p>
+              <p className="text-2xl font-bold">24</p>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
+            <UsersIcon className="w-10 h-10 text-primary" />
+            <div>
+              <p className="text-gray-500">العملاء الجدد</p>
+              <p className="text-2xl font-bold">12</p>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow flex items-center gap-4">
+            <CreditCardIcon className="w-10 h-10 text-primary" />
+            <div>
+              <p className="text-gray-500">الإيرادات</p>
+              <p className="text-2xl font-bold">8,450 ر.س</p>
+            </div>
+          </div>
+        </div>
+
+        {/* زر الدعم (Support) */}
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => onNavigate('admin_support')}
+            className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl shadow hover:shadow-md transition-all"
+          >
+            <ChatBubbleLeftEllipsisIcon className="w-6 h-6" />
+            <span className="font-bold">إدارة تذاكر الدعم</span>
+          </button>
+        </div>
+
+        {/* باقي محتوى لوحة التحكم (مثل قائمة الطلبات، المنتجات، إلخ) يمكنك إضافتها هنا */}
+        <div className="bg-white rounded-2xl shadow p-6">
+          <p className="text-gray-500 text-center py-20">المحتوى الرئيسي للوحة التحكم (مثل قائمة الطلبات أو المنتجات) يمكن وضعه هنا.</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// --- المكون الثاني والرئيسي للوحة التحكم (هذا هو التصدير الافتراضي الصحيح) ---
 interface AdminDashboardProps {
   user: any;
 }
@@ -168,7 +168,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedBranchId, setSelectedBranchId] = useState(user?.assignedBranchId || BRANCH_LOCATIONS[0].id);
+  const [selectedBranchId, setSelectedBranchId] = useState(user?.assignedBranchId || (BRANCH_LOCATIONS.length > 0 ? BRANCH_LOCATIONS[0].id : ''));
   const [isSecondaryVerified, setIsSecondaryVerified] = useState(!(user?.pin_auth_enabled || user?.biometric_auth_enabled));
   const [verificationPin, setVerificationPin] = useState('');
   const [isVerifyingBiometric, setIsVerifyingBiometric] = useState(false);
@@ -199,7 +199,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!db || !user) return;
     
     // Check if user has admin/management role to determine query scope
@@ -239,7 +239,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       }
     });
     return () => unsubscribe();
-  }, [db, notifications.length]);
+  }, [db, notifications.length, user]);
 
   // Form State
   const [formData, setFormData] = useState<any>({
@@ -607,7 +607,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                   <ShoppingCartIcon className="w-6 h-6 md:w-8 md:h-8" />
                 </div>
               </div>
-              <div className="bg-white p-6 md:p-10 rounded-2xl md:rounded-[3rem] shadow-xl border-b-8 border-blue-500 flex items-center justify-between transform hover:scale-105 transition-all sm:col-span-2 lg:col-span-1">
+              <div className="bg-white p-6 md:p-10 rounded-2xl md:rounded-[3rem] shadow-xl border-b-8 border-blue-50 flex items-center justify-between transform hover:scale-105 transition-all sm:col-span-2 lg:col-span-1">
                 <div className="space-y-2">
                   <p className="text-black font-bold text-[10px] md:text-sm uppercase tracking-widest">إجمالي المنتجات</p>
                   <h4 className="text-2xl md:text-4xl font-black text-blue-600">{stats.totalProducts} صنف</h4>
