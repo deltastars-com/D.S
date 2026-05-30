@@ -1,6 +1,3 @@
-import AdminGuard from './admin/AdminGuard';
-import AdminDashboard from './admin/Dashboard';   // ✅ المكون الجديد
-import TicketDetails from './admin/TicketDetails'; // ✅ المكون الجديد
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -28,14 +25,23 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { SplashScreen } from './components/SplashScreen';
 import Checkout from './components/Checkout';
 import AiAssistant from './components/AiAssistant';
+import { SplashScreen as CapSplashScreen } from '@capacitor/splash-screen';
 
-// Heavy UI Components - Lazy Loaded
+// Heavy UI Components - Lazy Loaded (تحميل كسول لتسريع المتجر)
 const AdminDashboardPage = lazy(() => import('./components/AdminDashboardPage').then(module => ({ default: module.default })));
 const VipDashboardPage = lazy(() => import('./components/VipDashboardPage').then(module => ({ default: module.VipDashboardPage })));
 const DriverDashboardPage = lazy(() => import('./components/DriverDashboardPage').then(module => ({ default: module.DriverDashboardPage })));
 const LiveTrackingPage = lazy(() => import('./components/LiveTrackingPage').then(module => ({ default: module.default })));
 
-import { SplashScreen as CapSplashScreen } from '@capacitor/splash-screen';
+// مكون تذاكر الدعم السريع (لتجنب مسارات الملفات المفقودة)
+const TicketDetailsMock = () => (
+  <div className="min-h-[60vh] flex items-center justify-center bg-slate-50">
+    <div className="text-center">
+      <h2 className="text-2xl font-black text-primary mb-4">تفاصيل التذكرة</h2>
+      <p className="text-gray-500 font-bold">جاري العمل على نظام التذاكر المتقدم...</p>
+    </div>
+  </div>
+);
 
 const LoadingOverlay = () => {
   const { t } = useI18n();
@@ -53,13 +59,11 @@ const AppContent: React.FC = () => {
   const [pageParams, setPageParams] = useState<any>(null);
   const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const { products } = useProducts();
-  const { items: cartItems, addItem, removeItem, updateQuantity, clearCart } = useCart();
   const { language } = useI18n();
   const { ads, units, updateProduct, categories, homeSections } = useFirebase();
 
   const [isAiOpen, setIsAiOpen] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-
+  
   useEffect(() => {
     CapSplashScreen.hide().catch(() => {});
   }, []);
@@ -142,9 +146,10 @@ const AppContent: React.FC = () => {
 
       // === صفحات الدعم ===
       case 'admin_support':
-        return <AdminDashboard user={user} onNavigate={handleNavigate} />;
+        return <AdminDashboardPage user={user as any} onNavigate={handleNavigate} />;
       case 'admin_ticket':
-        return <TicketDetails />;
+        return <TicketDetailsMock />;
+        
       default: return (
         <HomePage
           setCurrentPage={handleNavigate}
