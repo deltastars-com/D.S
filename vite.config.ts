@@ -5,13 +5,23 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
     minify: 'terser',
-    terserOptions: { compress: { drop_console: true, drop_debugger: true } },
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
     rollupOptions: {
       output: {
         entryFileNames: 'assets/[name].[hash].js',
@@ -20,5 +30,8 @@ export default defineConfig({
       },
     },
   },
-  server: { port: 5173, open: true },
+  server: {
+    port: 5173,
+    open: true,
+  },
 });
