@@ -1,6 +1,6 @@
 import AdminGuard from './admin/AdminGuard';
-import AdminDashboard from './admin/Dashboard';           // ✅ المكون الجديد للدعم
-import TicketDetails from './admin/TicketDetails';       // ✅ المكون الجديد لتفاصيل التذكرة
+import AdminDashboard from './admin/Dashboard';   // ✅ المكون الجديد
+import TicketDetails from './admin/TicketDetails'; // ✅ المكون الجديد
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -61,10 +61,7 @@ const AppContent: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   useEffect(() => {
-    // Hide native splash screen if it's running
-    CapSplashScreen.hide().catch(() => {
-      // Ignore if not running in a native environment
-    });
+    CapSplashScreen.hide().catch(() => {});
   }, []);
 
   const handleNavigate = useCallback((page: string, params?: any) => {
@@ -143,11 +140,11 @@ const AppContent: React.FC = () => {
       );
       case 'units': return <UnitsPage units={units || []} />;
 
-      // === صفحات الدعم الجديدة (Support Tickets) ===
+      // === صفحات الدعم ===
       case 'admin_support':
         return <AdminDashboard user={user} onNavigate={handleNavigate} />;
       case 'admin_ticket':
-        return <TicketDetails />;   // المكون يستخدم useParams
+        return <TicketDetails />;
       default: return (
         <HomePage
           setCurrentPage={handleNavigate}
@@ -176,13 +173,11 @@ const AppContent: React.FC = () => {
       <AnimatePresence>
         {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
       </AnimatePresence>
-
       <Header
         onNavigate={handleNavigate}
         currentPage={currentPage}
         onToggleAiAssistant={() => setIsAiOpen(true)}
       />
-
       <main className="pt-24 min-h-[85vh] overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
@@ -200,7 +195,6 @@ const AppContent: React.FC = () => {
           </motion.div>
         </AnimatePresence>
       </main>
-
       <Footer onNavigate={handleNavigate} />
     </div>
   );
