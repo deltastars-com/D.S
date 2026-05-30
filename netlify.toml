@@ -2,7 +2,29 @@
   command = "npm run build"
   publish = "dist"
 
+# إعدادات متطورة لتسريع تحميل المتجر (Caching)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# تحسين سرعة تحميل الملفات الثابتة
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# توجيه الروابط الأساسي لعمل React Router (ضروري جداً)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# دعم لضغط الملفات تلقائياً (تحسين السرعة)
+[build.processing]
+  [build.processing.html]
+    pretty_urls = true
+    canonical_links = true
