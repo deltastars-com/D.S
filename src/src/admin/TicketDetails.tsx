@@ -40,17 +40,21 @@ export default function TicketDetails() {
       created_at: new Date().toISOString()
     });
     setNewReply('');
-    // إعادة تحميل الردود
-    const { data } = await supabase.from('ticket_replies').select('*').eq('ticket_id', id).order('created_at', { ascending: true });
+    // refresh replies
+    const { data } = await supabase
+      .from('ticket_replies')
+      .select('*')
+      .eq('ticket_id', id)
+      .order('created_at', { ascending: true });
     if (data) setReplies(data);
   };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-black mb-6">تفاصيل التذكرة</h1>
-      <div className="bg-white rounded-2xl shadow p-6 mb-6">
-        {replies.map(reply => (
-          <div key={reply.id} className={`mb-4 p-4 rounded-xl ${reply.is_admin ? 'bg-blue-50 text-right' : 'bg-gray-100'}`}>
+      <div className="bg-white rounded-2xl shadow p-6 mb-6 space-y-4">
+        {replies.map((reply) => (
+          <div key={reply.id} className={`p-4 rounded-xl ${reply.is_admin ? 'bg-blue-50 text-right' : 'bg-gray-100'}`}>
             <div className="flex justify-between">
               <span className="font-bold">{reply.sender_name}</span>
               <span className="text-xs text-gray-500">{new Date(reply.created_at).toLocaleString()}</span>
@@ -62,7 +66,7 @@ export default function TicketDetails() {
       <div className="flex gap-4">
         <textarea
           value={newReply}
-          onChange={e => setNewReply(e.target.value)}
+          onChange={(e) => setNewReply(e.target.value)}
           rows={3}
           className="flex-1 border rounded-2xl p-4"
           placeholder="اكتب ردك هنا..."
