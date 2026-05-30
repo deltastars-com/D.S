@@ -1,23 +1,39 @@
-[build]
-  command = "npm run build"
-  publish = "dist"
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
-[[redirects]]
-  from = "http://*/*"
-  to = "https://:host/:splat"
-  status = 301
-  force = true
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Cache-Control = "public, max-age=31536000, immutable"
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false, // لتقليل حجم الملفات وزيادة الأداء
+    minify: 'terser', // استخدام Terser لضغط الملفات بأعلى كفاءة
+    terserOptions: {
+      compress: {
+        drop_console: true, // إزالة أي رسائل console.log من المتجر النهائي
+        drop_debugger: true,
+      },
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // تقسيم الملفات الكبيرة لتحسين سرعة التحميل
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    open: true,
+  },
+});
