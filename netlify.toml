@@ -1,12 +1,12 @@
 [build]
-  command = "cd delta-stars-v2 && npm run build"
-  publish = "delta-stars-v2/dist"
+  command = "npm run build"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
 
 [functions]
-  directory = "delta-stars-v2/supabase/functions"
+  directory = "supabase/functions"
 
 [[redirects]]
   from = "/*"
