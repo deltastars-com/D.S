@@ -2,24 +2,33 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.deltastars.store',
-  appName: 'Delta Stars',
+  appName: 'DeltaStars',
   webDir: 'dist',
+  bundledWebRuntime: false,
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: "#ffffff",
-      showSpinner: true,
-      androidSpinnerStyle: "large",
-      iosSpinnerStyle: "small",
-      spinnerColor: "#999999",
+      launchAutoShow: true,
+      backgroundColor: '#0f172a',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      androidSpinnerStyle: 'large',
+      iosSpinnerStyle: 'small',
+      spinnerColor: '#b8860b',
       splashFullScreen: true,
       splashImmersive: true,
     },
-    PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"],
+    StatusBar: {
+      style: 'dark',
+      backgroundColor: '#0f172a',
+    },
+    Keyboard: {
+      resize: 'body',
+      style: 'dark',
     },
   },
 };
