@@ -13,6 +13,7 @@ interface Reply {
 export default function TicketDetails() {
   const { id } = useParams<{ id: string }>();
   const [replies, setReplies] = useState<Reply[]>([]);
+  const [newReply, setNewReply] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -27,31 +28,52 @@ export default function TicketDetails() {
     fetchReplies();
   }, [id]);
 
+  const sendReply = async () => {
+    if (!newReply.trim()) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('ticket_replies').insert({
+      ticket_id: id,
+      sender_id: user?.id,
+      sender_name: user?.user_metadata?.name || 'المشرف',
+      text: newReply,
+      is_admin: true,
+      created_at: new Date().toISOString()
+    });
+    setNewReply('');
+    // إعادة تحميل الردود
+    const { data } = await supabase.from('ticket_replies').select('*').eq('ticket_id', id).order('created_at', { ascending: true });
+    if (data) setReplies(data);
+  };
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">تفاصيل التذكرة</h1>
-      <table className="w-full border-collapse border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2">ID</th>
-            <th className="border p-2">النص</th>
-            <th className="border p-2">المرسل</th>
-            <th className="border p-2">مشرف</th>
-            <th className="border p-2">التاريخ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {replies.map((reply) => (
-            <tr key={reply.id}>
-              <td className="border p-2">{reply.id}</td>
-              <td className="border p-2">{reply.text}</td>
-              <td className="border p-2">{reply.sender_name}</td>
-              <td className="border p-2">{reply.is_admin ? 'نعم' : 'لا'}</td>
-              <td className="border p-2">{new Date(reply.created_at).toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-black mb-6">تفاصيل التذكرة</h1>
+      <div className="bg-white rounded-2xl shadow p-6 mb-6">
+        {replies.map(reply => (
+          <div key={reply.id} className={`mb-4 p-4 rounded-xl ${reply.is_admin ? 'bg-blue-50 text-right' : 'bg-gray-100'}`}>
+            <div className="flex justify-between">
+              <span className="font-bold">{reply.sender_name}</span>
+              <span className="text-xs text-gray-500">{new Date(reply.created_at).toLocaleString()}</span>
+            </div>
+            <p className="mt-2">{reply.text}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-4">
+        <textarea
+          value={newReply}
+          onChange={e => setNewReply(e.target.value)}
+          rows={3}
+          className="flex-1 border rounded-2xl p-4"
+          placeholder="اكتب ردك هنا..."
+        />
+        <button
+          onClick={sendReply}
+          className="bg-primary text-white px-6 py-2 rounded-2xl"
+        >
+          إرسال
+        </button>
+      </div>
     </div>
   );
 }
