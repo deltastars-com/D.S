@@ -1,6 +1,5 @@
-
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db, onAuthStateChanged, onSnapshot, collection, query, orderBy, where, handleFirestoreError, OperationType, FirebaseUser, setDoc, doc, updateDoc, deleteDoc, testFirestoreConnection } from '@/firebase';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { auth, db, onAuthStateChanged, onSnapshot, collection, query, orderBy, where, handleFirestoreError, OperationType, FirebaseUser, setDoc, doc } from '@/firebase';
 import { User, Product, CategoryConfig, ProductUnit, HomeSection, Order, Branch, ShowroomItem, Coupon, Ad, LegalPage, PriceUpdateRequest, DeliveryAgent, Invoice, UserRole } from '../../../types';
 import { supabase, checkSupabaseConnection } from '../../../lib/supabaseClient';
 import api from '@/services/api';
@@ -43,7 +42,6 @@ interface FirebaseContextType {
   db: any;
   users: User[];
   promotions: any[];
-  // Management methods
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateProduct: (id: number, data: Partial<Product>) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
@@ -87,6 +85,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { language } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [showroomItems, setShowroomItems] = useState<ShowroomItem[]>([]);
   const [categories, setCategories] = useState<CategoryConfig[]>([]);
@@ -97,133 +96,138 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [ads, setAds] = useState<Ad[]>([]);
   const [legalPages, setLegalPages] = useState<LegalPage[]>([]);
-  const [isSeeding, setIsSeeding] = useState(false);
   const [priceUpdateRequests, setPriceUpdateRequests] = useState<PriceUpdateRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [deliveryAgents, setDeliveryAgents] = useState<DeliveryAgent[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
+  
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const seedCoupons = async () => {
-    try {
-      const welcomeCoupon = {
-        code: 'WELCOME10',
-        discountType: 'percentage',
-        value: 10,
-        minOrderAmount: 100,
-        expiryDate: '2026-05-31', // End of next month (May 2026)
-        isActive: true
-      };
+  const isInitialized = useRef(false);
 
+  // دوال الجلب المجزأة (Targeted Fetchers) لمنع إعادة تحميل المتجر بالكامل
+  const fetchers = useMemo(() => ({
+    products: async () => setProducts(await api.getProducts()),
+    categories: async () => setCategories(await api.getCategories()),
+    units: async () => setUnits(await api.getUnits()),
+    branches: async () => setBranches(await api.getBranches()),
+    ads: async () => setAds(await api.getAds()),
+    legal_pages: async () => {
+      const legal = await api.getLegalPages();
+      if (legal && legal.length > 0) setLegalPages(legal);
+    },
+    notifications: async () => {
+      if (!firebaseUser?.uid) return;
+      const notifs = await api.getNotifications(firebaseUser.uid) as any;
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter((n: any) => !n.is_read).length);
+    },
+    delivery_agents: async () => setDeliveryAgents(await api.getDeliveryAgents()),
+    invoices: async () => setInvoices(await api.getInvoices()),
+    orders: async () => setOrders(await api.getOrders() as any),
+    coupons: async () => setCoupons(await api.getCoupons()),
+    users: async () => {
+      const { data } = await supabase.from('users').select('*');
+      if (data) setUsers(data as any);
+    },
+    promotions: async () => {
+      const { data } = await supabase.from('promotions').select('*');
+      if (data) setPromotions(data);
+    },
+    home_sections: async () => setHomeSections(await api.getHomeSections())
+  }), [firebaseUser?.uid]);
+
+  const seedCoupons = useCallback(async () => {
+    try {
       const { data } = await supabase.from('coupons').select('id').eq('code', 'WELCOME10').single();
       if (!data) {
-        await supabase.from('coupons').insert(welcomeCoupon);
-        console.log('✅ WELCOME10 coupon seeded successfully');
+        await supabase.from('coupons').insert({
+          code: 'WELCOME10', discountType: 'percentage', value: 10,
+          minOrderAmount: 100, expiryDate: '2026-05-31', isActive: true
+        });
+        fetchers.coupons(); // تحديث الكوبونات فقط
       }
-    } catch (err) {
-      console.error('Error seeding coupons:', err);
-    }
-  };
+    } catch (err) { console.error('Error seeding coupons:', err); }
+  }, [fetchers]);
 
+  const seedLegalPages = useCallback(async () => {
+    try {
+      let seeded = false;
+      for (const page of DEFAULT_LEGAL_PAGES) {
+        const { data: existing } = await supabase.from('legal_pages').select('id').eq('id', page.id).single();
+        if (!existing) {
+          await supabase.from('legal_pages').insert({
+            id: page.id, title_ar: page.title_ar, title_en: page.title_en,
+            content_ar: page.content_ar, content_en: page.content_en, updatedAt: new Date().toISOString()
+          });
+          seeded = true;
+        }
+      }
+      if (seeded) fetchers.legal_pages(); // تحديث الصفحات القانونية فقط
+    } catch (err) {
+      console.error('Error seeding legal pages:', err);
+      setLegalPages(DEFAULT_LEGAL_PAGES);
+    }
+  }, [fetchers]);
+
+  // التمهيد الأساسي لمرة واحدة فقط
   useEffect(() => {
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
     const init = async () => {
       try {
-        await testFirestoreConnection(); // Verify Firestore connectivity
         const isConnected = await checkSupabaseConnection();
-        if (!isConnected) {
-          console.warn('⚠️ Supabase not connected. Falling back to mock data or Firebase.');
-        }
-        await fetchData();
-        await seedCoupons(); // Ensure system coupons exist
-        await seedLegalPages(); // Ensure legal pages exist
-        await fetchData(); // Fetch again to get seeded data
+        if (!isConnected) console.warn('⚠️ Supabase not connected. Falling back.');
+        
+        // جلب متوازي وسريع لجميع البيانات مرة واحدة
+        await Promise.all(Object.values(fetchers).map(fetcher => fetcher().catch(e => console.warn(e))));
+        
+        // تشغيل بذور التأسيس في الخلفية
+        seedCoupons();
+        seedLegalPages();
       } catch (err) {
         console.error('Initialization error:', err);
       } finally {
         setLoading(false);
       }
     };
-
-    // Sync data from Supabase
-    const fetchData = async () => {
-      try {
-        const [
-          prods,
-          cats,
-          unts,
-          brnchs,
-          adItems,
-          legal,
-          notifs,
-          agents,
-          invs,
-          ordrs,
-          cpns,
-          usrList,
-          promoList,
-          sections
-        ] = await Promise.all([
-          api.getProducts(),
-          api.getCategories(),
-          api.getUnits(),
-          api.getBranches(),
-          api.getAds(),
-          api.getLegalPages(),
-          api.getNotifications(firebaseUser?.uid || ''),
-          api.getDeliveryAgents(),
-          api.getInvoices(),
-          api.getOrders(),
-          api.getCoupons(),
-          supabase.from('users').select('*').then(res => res.data || []),
-          supabase.from('promotions').select('*').then(res => res.data || []),
-          api.getHomeSections()
-        ]);
-
-        setProducts(prods);
-        setCategories(cats);
-        setUnits(unts);
-        setBranches(brnchs);
-        setAds(adItems);
-        setHomeSections(sections);
-        if (legal && legal.length > 0) {
-          setLegalPages(legal);
-        }
-        setNotifications(notifs as any);
-        setDeliveryAgents(agents);
-        setInvoices(invs);
-        setOrders(ordrs as any);
-        setCoupons(cpns);
-        setUsers(usrList as any);
-        setPromotions(promoList);
-        setUnreadCount((notifs as any).filter((n: any) => !n.is_read).length);
-      } catch (err) {
-        console.error('Error fetching data from Supabase:', err);
-      }
-    };
-
     init();
+  }, [fetchers, seedCoupons, seedLegalPages]);
 
-    // Real-time subscriptions for all tables
+  // إدارة الاشتراكات الموجهة (التنظيف الذكي)
+  useEffect(() => {
     const tables = ['products', 'categories', 'units', 'branches', 'ads', 'legal_pages', 'notifications', 'delivery_agents', 'invoices', 'orders', 'coupons', 'home_sections'];
+    
     const subscriptions = tables.map(table =>
       supabase
         .channel(`public:${table}`)
-        .on('postgres_changes' as any, { event: '*', schema: 'public', table }, fetchData)
+        .on('postgres_changes' as any, { event: '*', schema: 'public', table }, () => {
+          // جلب الجدول الذي تم تحديثه فقط!
+          const fetcherKey = table as keyof typeof fetchers;
+          if (fetchers[fetcherKey]) {
+            fetchers[fetcherKey]();
+          }
+        })
         .subscribe()
     );
 
+    return () => {
+      subscriptions.forEach(sub => sub.unsubscribe());
+    };
+  }, [fetchers]);
+
+  // إدارة المصادقة (Auth & User Profile)
+  useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
-        // Still use Firebase for user profile for now, or migrate to Supabase users table
-        onSnapshot(doc(db, 'users', fbUser.uid), (snapshot) => {
+        const unsubscribeSnapshot = onSnapshot(doc(db, 'users', fbUser.uid), (snapshot) => {
           let userData = snapshot.data() as User;
-
-          // Bootstrap special roles based on email
           let role: UserRole = 'client';
           let type: UserRole = 'client';
           let permissions: string[] = [];
@@ -233,542 +237,313 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const isDevEmail = fbUser.email === 'vipservicesyemen@outlook.sa' || fbUser.email === 'deltastars777@gmail.com';
 
           if (isDevEmail || isAdminEmail) {
-            const isActualDev = isDevEmail;
-            role = isActualDev ? 'developer' : 'admin';
-            type = isActualDev ? 'developer' : 'admin';
-            permissions = [
-              'manage_products', 'manage_users', 'manage_accounting', 'manage_branches',
-              'manage_prices', 'receive_orders', 'manage_quality', 'manage_complaints',
-              'manage_ads', 'manage_coupons', 'manage_developer', 'manage_shipments'
-            ];
+            role = isDevEmail ? 'developer' : 'admin';
+            type = isDevEmail ? 'developer' : 'admin';
+            permissions = ['manage_products', 'manage_users', 'manage_accounting', 'manage_branches', 'manage_prices', 'receive_orders', 'manage_quality', 'manage_complaints', 'manage_ads', 'manage_coupons', 'manage_developer', 'manage_shipments'];
           }
 
           if (userData) {
-            // Merge permissions for special accounts to ensure they always have access
             if (isAdminEmail || isDevEmail) {
               userData = { ...userData, role, type, permissions };
             }
             setUser(userData);
           } else {
             const newUser: User = {
-              id: fbUser.uid,
-              uid: fbUser.uid,
-              type,
-              role,
-              email: fbUser.email || '',
-              full_name: fbUser.displayName || '',
-              name: fbUser.displayName || '',
-              permissions
+              id: fbUser.uid, uid: fbUser.uid, type, role, email: fbUser.email || '',
+              full_name: fbUser.displayName || '', name: fbUser.displayName || '', permissions
             };
             setUser(newUser);
-            // Save to Firestore
             setDoc(doc(db, 'users', fbUser.uid), newUser).catch(err => console.error('Error bootstrapping user:', err));
           }
         }, (err) => handleFirestoreError(err, OperationType.GET, 'users'));
+        
+        return () => unsubscribeSnapshot();
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => {
-      subscriptions.forEach(sub => sub.unsubscribe());
-      unsubscribeAuth();
-    };
-  }, [firebaseUser]);
+    return () => unsubscribeAuth();
+  }, []);
 
-  // Sync orders for current user if not admin
+  // جلب طلبات العميل العادي
   useEffect(() => {
+    let isMounted = true;
     if (!user || ['admin', 'developer', 'gm', 'ops'].includes(user.role)) return;
 
     const fetchUserOrders = async () => {
       try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
         if (error) throw error;
-        setOrders(data as any);
-      } catch (err) {
-        console.error('Error fetching user orders:', err);
-      }
+        if (isMounted) setOrders(data as any);
+      } catch (err) { console.error('Error fetching user orders:', err); }
     };
 
     fetchUserOrders();
+    return () => { isMounted = false; };
   }, [user]);
 
-  // --- Management Methods Implementation ---
-  const addProduct = async (product: Omit<Product, 'id'>) => {
-    try {
-      await api.createProduct(product);
-    } catch (err) { console.error('Error adding product to Supabase:', err); }
-  };
+  // --- Management Methods (Memoized for Performance) ---
+  
+  const addProduct = useCallback(async (product: Omit<Product, 'id'>) => {
+    try { await api.createProduct(product); } catch (err) { console.error(err); }
+  }, []);
 
-  const updateProduct = async (id: number, data: Partial<Product>) => {
-    try {
-      await api.updateProduct(id, data);
-    } catch (err) { console.error('Error updating product in Supabase:', err); }
-  };
+  const updateProduct = useCallback(async (id: number, data: Partial<Product>) => {
+    try { await api.updateProduct(id, data); } catch (err) { console.error(err); }
+  }, []);
 
-  const deleteProduct = async (id: number) => {
-    try {
-      await api.deleteProduct(id);
-    } catch (err) { console.error('Error deleting product from Supabase:', err); }
-  };
+  const deleteProduct = useCallback(async (id: number) => {
+    try { await api.deleteProduct(id); } catch (err) { console.error(err); }
+  }, []);
 
-  const addShowroomItem = async (item: Omit<ShowroomItem, 'id'>) => {
-    try {
-      const { error } = await supabase.from('showroom').insert(item);
-      if (error) throw error;
-    } catch (err) { console.error('Error adding showroom item to Supabase:', err); }
-  };
+  const addShowroomItem = useCallback(async (item: Omit<ShowroomItem, 'id'>) => {
+    try { await supabase.from('showroom').insert(item); } catch (err) { console.error(err); }
+  }, []);
 
-  const updateShowroomItem = async (id: number, data: Partial<ShowroomItem>) => {
-    try {
-      const { error } = await supabase.from('showroom').update(data).eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error updating showroom item in Supabase:', err); }
-  };
+  const updateShowroomItem = useCallback(async (id: number, data: Partial<ShowroomItem>) => {
+    try { await supabase.from('showroom').update(data).eq('id', id); } catch (err) { console.error(err); }
+  }, []);
 
-  const deleteShowroomItem = async (id: number) => {
-    try {
-      const { error } = await supabase.from('showroom').delete().eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error deleting showroom item from Supabase:', err); }
-  };
+  const deleteShowroomItem = useCallback(async (id: number) => {
+    try { await supabase.from('showroom').delete().eq('id', id); } catch (err) { console.error(err); }
+  }, []);
 
-  const updateOrder = async (id: string, data: Partial<Order>) => {
+  const updateOrder = useCallback(async (id: string, data: Partial<Order>) => {
     try {
-      const { error } = await supabase.from('orders').update(data).eq('id', id);
-      if (error) throw error;
-
-      // Update corresponding invoice if status or paymentStatus changed
+      await supabase.from('orders').update(data).eq('id', id);
       if (data.status || data.paymentStatus) {
         const { data: invoiceData } = await supabase.from('invoices').select('id').eq('orderId', id).single();
         if (invoiceData) {
           const invoiceUpdate: Partial<Invoice> = {};
-          if (data.paymentStatus === 'paid') {
-            invoiceUpdate.status = 'Paid';
-            invoiceUpdate.status_ar = 'مدفوع';
-          }
-          if (Object.keys(invoiceUpdate).length > 0) {
-            await supabase.from('invoices').update(invoiceUpdate).eq('id', invoiceData.id);
-          }
+          if (data.paymentStatus === 'paid') { invoiceUpdate.status = 'Paid'; invoiceUpdate.status_ar = 'مدفوع'; }
+          if (Object.keys(invoiceUpdate).length > 0) await supabase.from('invoices').update(invoiceUpdate).eq('id', invoiceData.id);
         }
       }
 
-      // If status changed, trigger notification
       if (data.status) {
         const order = orders.find(o => o.id === id);
         if (order && order.customerPhone) {
-          await smsService.sendOrderStatusUpdate(order.customerPhone, id, data.status, {
-            total: order.total,
-            itemsCount: order.items.length
-          });
+          await smsService.sendOrderStatusUpdate(order.customerPhone, id, data.status, { total: order.total, itemsCount: order.items.length });
         }
-
         if (data.status === 'delivered') {
           await supabase.from('notifications').insert({
-            title_ar: 'تم تسليم الطلب',
-            title_en: 'Order Delivered',
+            title_ar: 'تم تسليم الطلب', title_en: 'Order Delivered',
             message_ar: `تم تسليم الطلب رقم ${id} بنجاح. شكراً لتعاملكم معنا.`,
             message_en: `Order #${id} has been delivered successfully. Thank you for choosing us.`,
-            created_at: new Date().toISOString(),
-            is_read: false,
-            type: 'order',
+            created_at: new Date().toISOString(), is_read: false, type: 'order',
             user_id: orders.find(o => o.id === id)?.customerId || ''
           });
         }
       }
-    } catch (err) { console.error('Error updating order in Supabase:', err); }
-  };
+    } catch (err) { console.error(err); }
+  }, [orders]);
 
-  const deleteOrder = async (id: string) => {
+  const deleteOrder = useCallback(async (id: string) => {
+    try { await supabase.from('orders').delete().eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const addCoupon = useCallback(async (coupon: Omit<Coupon, 'id'>) => {
+    try { await api.createCoupon(coupon); } catch (err) { console.error(err); }
+  }, []);
+
+  const updateCoupon = useCallback(async (id: string, data: Partial<Coupon>) => {
+    try { await supabase.from('coupons').update(data).eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const deleteCoupon = useCallback(async (id: string) => {
+    try { await api.deleteCoupon(id); } catch (err) { console.error(err); }
+  }, []);
+
+  const addAd = useCallback(async (ad: Omit<Ad, 'id'>) => {
+    try { await supabase.from('ads').insert(ad); } catch (err) { console.error(err); }
+  }, []);
+
+  const updateAd = useCallback(async (id: string, data: Partial<Ad>) => {
+    try { await supabase.from('ads').update(data).eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const deleteAd = useCallback(async (id: string) => {
+    try { await supabase.from('ads').delete().eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const addBranch = useCallback(async (branch: Omit<Branch, 'id'>) => {
+    try { await supabase.from('branches').insert(branch); } catch (err) { console.error(err); }
+  }, []);
+
+  const updateBranch = useCallback(async (id: string, data: Partial<Branch>) => {
+    try { await supabase.from('branches').update(data).eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const deleteBranch = useCallback(async (id: string) => {
+    try { await supabase.from('branches').delete().eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const addPriceUpdateRequest = useCallback(async (request: Omit<PriceUpdateRequest, 'id'>) => {
+    try { await supabase.from('price_update_requests').insert(request); } catch (err) { console.error(err); }
+  }, []);
+
+  const updatePriceUpdateRequest = useCallback(async (id: string, data: Partial<PriceUpdateRequest>) => {
+    try { await supabase.from('price_update_requests').update(data).eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const updateUserPermissions = useCallback(async (userId: string, permissions: string[]) => {
+    try { await supabase.from('users').update({ permissions }).eq('id', userId); } catch (err) { console.error(err); }
+  }, []);
+
+  const updateLegalPage = useCallback(async (id: string, data: Partial<LegalPage>) => {
+    try { await api.updateLegalPage(id, data); } catch (err) { console.error(err); }
+  }, []);
+
+  const updateHomeSection = useCallback(async (id: string, data: Partial<HomeSection>) => {
+    try { await supabase.from('home_sections').update(data).eq('id', id); } catch (err) { console.error(err); }
+  }, []);
+
+  const addHomeSection = useCallback(async (section: Omit<HomeSection, 'id'>) => {
+    try { await supabase.from('home_sections').insert(section); } catch (err) { console.error(err); }
+  }, []);
+
+  const markNotificationAsRead = useCallback(async (id: string) => {
+    try { await api.markNotificationAsRead(id); } catch (err) { console.error(err); }
+  }, []);
+
+  const updateDeliveryAgent = useCallback(async (id: string, data: Partial<DeliveryAgent>) => {
+    try { await api.updateDeliveryAgent(id, data); } catch (err) { console.error(err); }
+  }, []);
+
+  const addDeliveryAgent = useCallback(async (agent: Omit<DeliveryAgent, 'id'>) => {
+    try { await api.createDeliveryAgent(agent); } catch (err) { console.error(err); }
+  }, []);
+
+  const deleteDeliveryAgent = useCallback(async (id: string) => {
+    try { await api.deleteDeliveryAgent(id); } catch (err) { console.error(err); }
+  }, []);
+
+  const syncProductsToFirestore = useCallback(async () => {
     try {
-      const { error } = await supabase.from('orders').delete().eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error deleting order from Supabase:', err); }
-  };
+      for (const p of products) await setDoc(doc(db, 'products', p.id.toString()), p);
+      console.log('✅ Products synced to Firestore');
+    } catch (err) { console.error(err); }
+  }, [products]);
 
-  const addCoupon = async (coupon: Omit<Coupon, 'id'>) => {
-    try {
-      await api.createCoupon(coupon);
-    } catch (err) { console.error('Error adding coupon to Supabase:', err); }
-  };
+  const addCategory = useCallback(async (category: Omit<CategoryConfig, 'id'>) => {
+    try { await supabase.from('categories').insert(category); } catch (err) { console.error(err); }
+  }, []);
 
-  const updateCoupon = async (id: string, data: Partial<Coupon>) => {
-    try {
-      const { error } = await supabase.from('coupons').update(data).eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error updating coupon in Supabase:', err); }
-  };
+  const deleteCategory = useCallback(async (id: string) => {
+    try { await supabase.from('categories').delete().eq('id', id); } catch (err) { console.error(err); }
+  }, []);
 
-  const deleteCoupon = async (id: string) => {
-    try {
-      await api.deleteCoupon(id);
-    } catch (err) { console.error('Error deleting coupon from Supabase:', err); }
-  };
+  const addUnit = useCallback(async (unit: Omit<ProductUnit, 'id'>) => {
+    try { await supabase.from('units').insert(unit); } catch (err) { console.error(err); }
+  }, []);
 
-  const addAd = async (ad: Omit<Ad, 'id'>) => {
-    try {
-      const { error } = await supabase.from('ads').insert(ad);
-      if (error) throw error;
-    } catch (err) { console.error('Error adding ad to Supabase:', err); }
-  };
+  const deleteUnit = useCallback(async (id: string) => {
+    try { await supabase.from('units').delete().eq('id', id); } catch (err) { console.error(err); }
+  }, []);
 
-  const updateAd = async (id: string, data: Partial<Ad>) => {
-    try {
-      const { error } = await supabase.from('ads').update(data).eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error updating ad in Supabase:', err); }
-  };
+  const getLegalPages = useCallback(async () => legalPages, [legalPages]);
 
-  const deleteAd = async (id: string) => {
-    try {
-      const { error } = await supabase.from('ads').delete().eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error deleting ad from Supabase:', err); }
-  };
-
-  const addBranch = async (branch: Omit<Branch, 'id'>) => {
-    try {
-      const { error } = await supabase.from('branches').insert(branch);
-      if (error) throw error;
-    } catch (err) { console.error('Error adding branch to Supabase:', err); }
-  };
-
-  const updateBranch = async (id: string, data: Partial<Branch>) => {
-    try {
-      const { error } = await supabase.from('branches').update(data).eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error updating branch in Supabase:', err); }
-  };
-
-  const deleteBranch = async (id: string) => {
-    try {
-      const { error } = await supabase.from('branches').delete().eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error deleting branch from Supabase:', err); }
-  };
-
-  const addPriceUpdateRequest = async (request: Omit<PriceUpdateRequest, 'id'>) => {
-    try {
-      const { error } = await supabase.from('price_update_requests').insert(request);
-      if (error) throw error;
-    } catch (err) { console.error('Error adding price update request to Supabase:', err); }
-  };
-
-  const updatePriceUpdateRequest = async (id: string, data: Partial<PriceUpdateRequest>) => {
-    try {
-      const { error } = await supabase.from('price_update_requests').update(data).eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error updating price update request in Supabase:', err); }
-  };
-
-  const updateUserPermissions = async (userId: string, permissions: string[]) => {
-    try {
-      const { error } = await supabase.from('users').update({ permissions }).eq('id', userId);
-      if (error) throw error;
-    } catch (err) { console.error('Error updating user permissions in Supabase:', err); }
-  };
-
-  const updateLegalPage = async (id: string, data: Partial<LegalPage>) => {
-    try {
-      await api.updateLegalPage(id, data);
-    } catch (err) { console.error('Error updating legal page in Supabase:', err); }
-  };
-
-  const updateHomeSection = async (id: string, data: Partial<HomeSection>) => {
-    try {
-      const { error } = await supabase.from('home_sections').update(data).eq('id', id);
-      if (error) throw error;
-    } catch (err) { console.error('Error updating home section in Supabase:', err); }
-  };
-
-  const addHomeSection = async (section: Omit<HomeSection, 'id'>) => {
-    try {
-      const { error } = await supabase.from('home_sections').insert(section);
-      if (error) throw error;
-    } catch (err) { console.error('Error adding home section in Supabase:', err); }
-  };
-
-  const markNotificationAsRead = async (id: string) => {
-    try {
-      await api.markNotificationAsRead(id);
-    } catch (err) { console.error('Error marking notification as read in Supabase:', err); }
-  };
-
-  const updateDeliveryAgent = async (id: string, data: Partial<DeliveryAgent>) => {
-    try {
-      await api.updateDeliveryAgent(id, data);
-    } catch (err) { console.error('Error updating delivery agent in Supabase:', err); }
-  };
-
-  const addDeliveryAgent = async (agent: Omit<DeliveryAgent, 'id'>) => {
-    try {
-      await api.createDeliveryAgent(agent);
-    } catch (err) { console.error('Error adding delivery agent to Supabase:', err); }
-  };
-
-  const deleteDeliveryAgent = async (id: string) => {
-    try {
-      await api.deleteDeliveryAgent(id);
-    } catch (err) { console.error('Error deleting delivery agent from Supabase:', err); }
-  };
-
-  const createOrderWithInvoice = async (orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>) => {
+  const createOrderWithInvoice = useCallback(async (orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>) => {
     try {
       const orderId = `DS-${Math.floor(100000 + Math.random() * 900000)}`;
       const timestamp = new Date().toISOString();
-
-      const dueDateObj = new Date();
-      dueDateObj.setDate(dueDateObj.getDate() + 3);
-      const dueDate = dueDateObj.toISOString();
+      const dueDateObj = new Date(); dueDateObj.setDate(dueDateObj.getDate() + 3);
 
       const newOrder: Order = {
-        ...orderData,
-        id: orderId,
-        status: 'pending',
+        ...orderData, id: orderId, status: 'pending',
         paymentStatus: orderData.paymentMethod === 'cod' ? 'pending' : 'paid',
-        createdAt: timestamp,
-        dueDate: dueDate,
+        createdAt: timestamp, dueDate: dueDateObj.toISOString(),
       };
 
-      // 1. Save Order to Supabase
-      const { error: orderError } = await supabase.from('orders').insert(newOrder);
-      if (orderError) throw orderError;
+      await supabase.from('orders').insert(newOrder);
 
-      // 2. Create Automated Invoice (ZATCA Compliant)
       const invoiceId = `INV-${orderId.split('-')[1]}`;
-      const vatNumber = "310123456700003"; // Mock VAT Number
+      const vatNumber = "310123456700003";
       const taxAmount = (orderData.subtotal - (orderData.discountAmount || 0) + (orderData.shippingFee || 0)) * 0.15;
-
-      // ZATCA QR Code (Simplified TLV Encoding Placeholder)
-      const sellerName = "Delta Stars Trading Co.";
-      const qrData = JSON.stringify({
-        seller: sellerName,
-        vat: vatNumber,
-        timestamp: timestamp,
-        total: orderData.total,
-        tax: taxAmount.toFixed(2)
-      });
+      const qrData = JSON.stringify({ seller: "Delta Stars Trading Co.", vat: vatNumber, timestamp, total: orderData.total, tax: taxAmount.toFixed(2) });
       const qrCode = btoa(unescape(encodeURIComponent(qrData)));
-
-      const invoiceDueDate = new Date();
-      invoiceDueDate.setDate(invoiceDueDate.getDate() + 30); // 30 days credit for VIP
+      const invoiceDueDate = new Date(); invoiceDueDate.setDate(invoiceDueDate.getDate() + 30);
 
       const newInvoice: Invoice = {
-        id: invoiceId,
-        orderId: orderId,
-        clientId: orderData.customerId,
-        customerName: orderData.customerName,
-        date: timestamp,
-        dueDate: user?.role === 'vip' ? invoiceDueDate.toISOString() : undefined,
-        items: orderData.items.map(item => ({
-          productId: item.id,
-          name_ar: item.name_ar,
-          name_en: item.name_en,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        subtotal: orderData.subtotal,
-        shipping: orderData.shippingFee || 0,
-        tax: taxAmount,
-        total: orderData.total,
+        id: invoiceId, orderId, clientId: orderData.customerId, customerName: orderData.customerName,
+        date: timestamp, dueDate: user?.role === 'vip' ? invoiceDueDate.toISOString() : undefined,
+        items: orderData.items.map(item => ({ productId: item.id, name_ar: item.name_ar, name_en: item.name_en, quantity: item.quantity, price: item.price })),
+        subtotal: orderData.subtotal, shipping: orderData.shippingFee || 0, tax: taxAmount, total: orderData.total,
         status: newOrder.paymentStatus === 'paid' ? 'Paid' : 'Unpaid',
         status_ar: newOrder.paymentStatus === 'paid' ? 'مدفوع' : 'غير مدفوع',
-        type: 'Sales' as const,
-        branchId: orderData.branchId,
-        sellerVatNumber: vatNumber,
-        qrCode: qrCode,
-        invoiceType: 'Simplified'
+        type: 'Sales', branchId: orderData.branchId, sellerVatNumber: vatNumber, qrCode, invoiceType: 'Simplified'
       };
       await api.createInvoice(newInvoice);
 
-      // 3. Handle Wholesale Debt if applicable
       if (user?.role === 'vip') {
         const currentDebt = user.debt_balance || 0;
         const newBalance = currentDebt + (orderData.paymentMethod === 'bank_transfer' ? orderData.total : 0);
-
         if (orderData.paymentMethod === 'bank_transfer') {
           await supabase.from('users').update({ debt_balance: newBalance }).eq('id', user.id);
-
-          // Add transaction record for wholesale client
           await supabase.from('vip_transactions').insert({
-            clientId: user.id,
-            date: timestamp,
-            description_ar: `فاتورة مبيعات رقم ${invoiceId} (آجل)`,
-            description_en: `Sales Invoice #${invoiceId} (Credit)`,
-            debit: orderData.total,
-            credit: 0,
-            balance: newBalance
+            clientId: user.id, date: timestamp, description_ar: `فاتورة مبيعات رقم ${invoiceId} (آجل)`,
+            description_en: `Sales Invoice #${invoiceId} (Credit)`, debit: orderData.total, credit: 0, balance: newBalance
           });
         }
       }
 
-      // 4. Trigger Onyx Pro Sync (Background)
       try {
         const syncResult = await onyxService.syncOrder(newOrder);
         if (syncResult.success) {
-          await supabase.from('orders').update({
-            onyx_sync_status: 'synced',
-            onyx_invoice_id: syncResult.onyxInvoiceId
-          }).eq('id', orderId);
-
-          // Also sync invoice
+          await supabase.from('orders').update({ onyx_sync_status: 'synced', onyx_invoice_id: syncResult.onyxInvoiceId }).eq('id', orderId);
           await onyxService.syncInvoice(newInvoice);
         }
-      } catch (e) {
-        console.warn('Onyx sync failed, will retry later', e);
-      }
+      } catch (e) { console.warn('Onyx sync failed', e); }
 
-      // 5. Create Admin Notification with Sound Trigger Flag
       const assignedBranch = branches.find(b => b.id === orderData.branchId.toString()) || branches[0];
-
-      // Auto-assign closest driver (Mock logic: pick nearest online driver)
       const availableDrivers = deliveryAgents.filter(a => a.status === 'online');
-      let assignedDriverId = '';
-      if (availableDrivers.length > 0) {
-        assignedDriverId = availableDrivers[0].id; // In production, use lat/lng proximity
-        await supabase.from('orders').update({ driverId: assignedDriverId, status: 'preparing' }).eq('id', orderId);
-      }
+      let assignedDriverId = availableDrivers.length > 0 ? availableDrivers[0].id : '';
+      
+      if (assignedDriverId) await supabase.from('orders').update({ driverId: assignedDriverId, status: 'preparing' }).eq('id', orderId);
 
       await supabase.from('notifications').insert({
-        title_ar: 'طلب جديد مستلم وموجه',
-        title_en: 'New Order Routed',
-        message_ar: `طلب ${orderId} من ${orderData.customerName} موجه لفرع ${assignedBranch?.name_ar || 'الرئيسي'}. تم إبلاغ المناديب.`,
-        message_en: `Order ${orderId} routed to ${assignedBranch?.name_en || 'Main'} branch. Agents notified.`,
-        created_at: timestamp,
-        is_read: false,
-        type: 'order',
-        user_id: 'admin',
-        metadata: {
-          sound: 'alert_new_order',
-          branchId: orderData.branchId,
-          driverId: assignedDriverId
-        }
+        title_ar: 'طلب جديد مستلم وموجه', title_en: 'New Order Routed',
+        message_ar: `طلب ${orderId} من ${orderData.customerName} موجه لفرع ${assignedBranch?.name_ar || 'الرئيسي'}.`,
+        message_en: `Order ${orderId} routed to ${assignedBranch?.name_en || 'Main'} branch.`,
+        created_at: timestamp, is_read: false, type: 'order', user_id: 'admin',
+        metadata: { sound: 'alert_new_order', branchId: orderData.branchId, driverId: assignedDriverId }
       });
 
-      // Notify Driver specifically
       if (assignedDriverId) {
         await supabase.from('notifications').insert({
-          title_ar: 'طلب شحن جديد بانتظارك',
-          title_en: 'New Shipment Awaiting You',
-          message_ar: `طلب رقم ${orderId} جاهز للاستلام من فرع ${assignedBranch?.name_ar}. يرجى التوجه للمخزن.`,
-          message_en: `Order #${orderId} is ready for pickup from ${assignedBranch?.name_en}. Proceed to warehouse.`,
-          created_at: timestamp,
-          is_read: false,
-          type: 'order',
-          user_id: assignedDriverId
+          title_ar: 'طلب شحن جديد بانتظارك', title_en: 'New Shipment Awaiting You',
+          message_ar: `طلب رقم ${orderId} جاهز للاستلام من فرع ${assignedBranch?.name_ar}.`,
+          message_en: `Order #${orderId} is ready for pickup from ${assignedBranch?.name_en}.`,
+          created_at: timestamp, is_read: false, type: 'order', user_id: assignedDriverId
         });
       }
 
-      // 6. Send SMS/WhatsApp Confirmation to Customer
       if (orderData.customerPhone) {
         const estDelivery = language === 'ar' ? 'خلال 6-12 ساعة' : 'within 6-12 hours';
-        await smsService.sendOrderStatusUpdate(orderData.customerPhone, orderId, 'received', {
-          total: orderData.total,
-          itemsCount: orderData.items.length,
-          estimatedDelivery: estDelivery
-        });
-
-        // WhatsApp Business API Placeholder
-        await smsService.sendWhatsAppNotification(orderData.customerPhone,
-          language === 'ar'
-            ? `*نجوم دلتا للتجارة*\nتم استلام طلبكم بنجاح!\nرقم الطلب: ${orderId}\nالإجمالي: ${orderData.total} ر.س\nالتوصيل المتوقع: ${estDelivery}\nشكراً لثقتكم بنا.`
-            : `*Delta Stars Trading*\nYour order has been received successfully!\nOrder ID: ${orderId}\nTotal: ${orderData.total} SAR\nEst. Delivery: ${estDelivery}\nThank you for choosing us.`
-        );
+        await smsService.sendOrderStatusUpdate(orderData.customerPhone, orderId, 'received', { total: orderData.total, itemsCount: orderData.items.length, estimatedDelivery: estDelivery });
+        await smsService.sendWhatsAppNotification(orderData.customerPhone, language === 'ar' ? `تم استلام طلبكم بنجاح!\nرقم الطلب: ${orderId}` : `Your order received!\nOrder ID: ${orderId}`);
       }
 
       return orderId;
-    } catch (err) {
-      console.error('Error creating order with invoice in Supabase:', err);
-      throw err;
-    }
-  };
+    } catch (err) { console.error(err); throw err; }
+  }, [user, branches, deliveryAgents, language]);
 
-  const syncProductsToFirestore = async () => {
-    try {
-      for (const p of products) {
-        await setDoc(doc(db, 'products', p.id.toString()), p);
-      }
-      console.log('✅ Products synced to Firestore');
-    } catch (err) {
-      console.error('Error syncing products:', err);
-    }
-  };
-
-  const addCategory = async (category: Omit<CategoryConfig, 'id'>) => {
-    try {
-      await supabase.from('categories').insert(category);
-    } catch (err) { console.error('Error adding category:', err); }
-  };
-
-  const deleteCategory = async (id: string) => {
-    try {
-      await supabase.from('categories').delete().eq('id', id);
-    } catch (err) { console.error('Error deleting category:', err); }
-  };
-
-  const addUnit = async (unit: Omit<ProductUnit, 'id'>) => {
-    try {
-      await supabase.from('units').insert(unit);
-    } catch (err) { console.error('Error adding unit:', err); }
-  };
-
-  const deleteUnit = async (id: string) => {
-    try {
-      await supabase.from('units').delete().eq('id', id);
-    } catch (err) { console.error('Error deleting unit:', err); }
-  };
-
-  const getLegalPages = async () => {
-    return legalPages;
-  };
-
-  const seedLegalPages = async () => {
-    setIsSeeding(true);
-    try {
-      for (const page of DEFAULT_LEGAL_PAGES) {
-        // Use a more robust check to avoid overwriting unless needed
-        const { data: existing } = await supabase.from('legal_pages').select('id').eq('id', page.id).single();
-        if (!existing) {
-          await supabase.from('legal_pages').insert({
-            id: page.id,
-            title_ar: page.title_ar,
-            title_en: page.title_en,
-            content_ar: page.content_ar,
-            content_en: page.content_en,
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
-      // Fetch latest after seeding
-      const { data: freshLegal } = await supabase.from('legal_pages').select('*');
-      if (freshLegal && freshLegal.length > 0) {
-        setLegalPages(freshLegal as LegalPage[]);
-      } else {
-        setLegalPages(DEFAULT_LEGAL_PAGES);
-      }
-      console.log('✅ Legal pages seeded successfully');
-    } catch (err) {
-      console.error('Error seeding legal pages:', err);
-      // Fallback to local state if Supabase fails
-      setLegalPages(DEFAULT_LEGAL_PAGES);
-    } finally {
-      setIsSeeding(false);
-    }
-  };
+  // تغليف القيم المرسلة لمنع الـ Re-renders العشوائية في التطبيق
+  const contextValue = useMemo(() => ({
+    user, firebaseUser, products, showroomItems, categories, units, homeSections, orders, branches, coupons, ads, legalPages, priceUpdateRequests, notifications, deliveryAgents, invoices, unreadCount, loading, error, db, users, promotions,
+    addProduct, updateProduct, deleteProduct, addShowroomItem, updateShowroomItem, deleteShowroomItem, updateOrder, deleteOrder,
+    addCoupon, updateCoupon, deleteCoupon, addAd, updateAd, deleteAd, addBranch, updateBranch, deleteBranch, addPriceUpdateRequest, updatePriceUpdateRequest, updateUserPermissions, updateLegalPage, updateHomeSection, addHomeSection, markNotificationAsRead,
+    updateDeliveryAgent, addDeliveryAgent, deleteDeliveryAgent, createOrderWithInvoice, seedLegalPages,
+    syncProductsToFirestore, addCategory, deleteCategory, addUnit, deleteUnit, getLegalPages
+  }), [
+    user, firebaseUser, products, showroomItems, categories, units, homeSections, orders, branches, coupons, ads, legalPages, priceUpdateRequests, notifications, deliveryAgents, invoices, unreadCount, loading, error, users, promotions,
+    addProduct, updateProduct, deleteProduct, addShowroomItem, updateShowroomItem, deleteShowroomItem, updateOrder, deleteOrder, addCoupon, updateCoupon, deleteCoupon, addAd, updateAd, deleteAd, addBranch, updateBranch, deleteBranch, addPriceUpdateRequest, updatePriceUpdateRequest, updateUserPermissions, updateLegalPage, updateHomeSection, addHomeSection, markNotificationAsRead, updateDeliveryAgent, addDeliveryAgent, deleteDeliveryAgent, createOrderWithInvoice, seedLegalPages, syncProductsToFirestore, addCategory, deleteCategory, addUnit, deleteUnit, getLegalPages
+  ]);
 
   return (
-    <FirebaseContext.Provider value={{
-      user, firebaseUser, products, showroomItems, categories, units, homeSections, orders, branches, coupons, ads, legalPages, priceUpdateRequests, notifications, deliveryAgents, invoices, unreadCount, loading, error, db, users, promotions,
-      addProduct, updateProduct, deleteProduct, addShowroomItem, updateShowroomItem, deleteShowroomItem, updateOrder, deleteOrder,
-      addCoupon, updateCoupon, deleteCoupon, addAd, updateAd, deleteAd, addBranch, updateBranch, deleteBranch, addPriceUpdateRequest, updatePriceUpdateRequest, updateUserPermissions, updateLegalPage, updateHomeSection, addHomeSection, markNotificationAsRead,
-      updateDeliveryAgent, addDeliveryAgent, deleteDeliveryAgent, createOrderWithInvoice, seedLegalPages,
-      syncProductsToFirestore, addCategory, deleteCategory, addUnit, deleteUnit, getLegalPages
-    }}>
+    <FirebaseContext.Provider value={contextValue}>
       {children}
     </FirebaseContext.Provider>
   );
@@ -776,8 +551,6 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 export const useFirebase = () => {
   const context = useContext(FirebaseContext);
-  if (context === undefined) {
-    throw new Error('useFirebase must be used within a FirebaseProvider');
-  }
+  if (context === undefined) throw new Error('useFirebase must be used within a FirebaseProvider');
   return context;
 };
