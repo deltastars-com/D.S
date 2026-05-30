@@ -11,11 +11,18 @@ if ('serviceWorker' in navigator) {
 // ==================================================
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { SovereignProvider } from './components/lib/contexts';
 import App from './App';
 import { setupMockApi } from './components/lib/mockApi';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import '../index.css';
+import './index.css';
+
+// === استدعاء المزودات (Providers) بمساراتها الجذرية المباشرة والصحيحة ===
+import { I18nProvider } from './components/lib/contexts/I18nContext';
+import { FirebaseProvider } from './components/lib/contexts/FirebaseContext';
+import { GeminiAiProvider } from './components/lib/contexts/GeminiContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 // إصدار التطبيق - غيّره عند كل تحديث كبير (لتعطيل الكاش)
 const APP_VERSION = '15.0.0';
@@ -23,8 +30,7 @@ const APP_VERSION = '15.0.0';
 // Initialize Mock API Layer
 setupMockApi();
 
-/** 
- * Delta Stars Sovereign Update Engine v14.0 - Diamond Edition
+/** * Delta Stars Sovereign Update Engine v14.0 - Diamond Edition
  * نظام التحديث التلقائي اللحظي والتعافي الذكي من الانقطاع
  */
 
@@ -33,7 +39,6 @@ const initSovereignSentinels = () => {
   // Global Error Recovery
   window.addEventListener('error', (event) => {
     console.warn('🛡️ Sovereign Shield: Captured Runtime Error. Attempting Auto-Patch...');
-    // Log for telemetry (mock)
     if (event.error?.message?.includes('network')) {
        console.log('📡 Network instability detected. Stabilizing connection...');
     }
@@ -68,18 +73,15 @@ initSovereignSentinels();
 // --- Service Worker Management (محسن لتجنب مشاكل التخزين المؤقت) ---
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
-    // أولاً: إلغاء تسجيل أي Service Worker قديم لضمان عدم احتفاظه بنسخ قديمة
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (let registration of registrations) {
       await registration.unregister();
       console.log('♻️ Old Service Worker unregistered');
     }
 
-    // ثم تسجيل الـ SW الجديد (إذا كان موجوداً)
     navigator.serviceWorker.register('/service-worker.js').then(registration => {
       console.log(`💎 Sovereign OS: Update Layer Active - v${APP_VERSION}`);
       
-      // Auto-update check
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (installingWorker) {
@@ -101,12 +103,24 @@ const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error("Critical Mount Failure.");
 
 const root = createRoot(rootElement);
+
+// === تغليف التطبيق مباشرة بالمزودات بترتيبها الصحيح لمنع أي انهيار ===
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <SovereignProvider>
-        <App />
-      </SovereignProvider>
+      <I18nProvider>
+        <FirebaseProvider>
+          <GeminiAiProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <NotificationProvider>
+                  <App />
+                </NotificationProvider>
+              </AuthProvider>
+            </ToastProvider>
+          </GeminiAiProvider>
+        </FirebaseProvider>
+      </I18nProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );
