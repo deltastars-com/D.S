@@ -1,5 +1,6 @@
 import AdminGuard from './admin/AdminGuard';
-import TicketDetails from './admin/TicketDetails';
+import AdminDashboard from './admin/Dashboard';           // ✅ المكون الجديد للدعم
+import TicketDetails from './admin/TicketDetails';       // ✅ المكون الجديد لتفاصيل التذكرة
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -144,10 +145,9 @@ const AppContent: React.FC = () => {
 
       // === صفحات الدعم الجديدة (Support Tickets) ===
       case 'admin_support':
-        return <AdminDashboardPage user={user as any} onNavigate={handleNavigate} />;
+        return <AdminDashboard user={user} onNavigate={handleNavigate} />;
       case 'admin_ticket':
-        return <TicketDetails ticketId={pageParams?.id} />;
-
+        return <TicketDetails />;   // المكون يستخدم useParams
       default: return (
         <HomePage
           setCurrentPage={handleNavigate}
