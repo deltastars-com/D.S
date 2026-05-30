@@ -22,62 +22,37 @@ export default function AdminDashboard() {
     if (!error && data) setTickets(data);
   };
 
-  const updateStatus = async (id: string, status: string) => {
-    await supabase.from('support_tickets').update({ status }).eq('id', id);
-    fetchTickets();
-  };
-
   useEffect(() => {
     fetchTickets();
-    const channel = supabase
-      .channel('admin-tickets')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, () => fetchTickets())
-      .subscribe();
-    return () => { channel.unsubscribe(); };
   }, []);
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-3xl font-black mb-6 text-right">لوحة تحكم الدعم</h1>
-      <div className="bg-white rounded-2xl shadow overflow-x-auto">
-        <table className="min-w-full text-right">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="p-4">العميل</th>
-              <th>الموضوع</th>
-              <th>الحالة</th>
-              <th>التاريخ</th>
-              <th></th>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">لوحة تحكم الدعم</h1>
+      <table className="w-full border-collapse border">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border p-2">ID</th>
+            <th className="border p-2">الاسم</th>
+            <th className="border p-2">البريد</th>
+            <th className="border p-2">الموضوع</th>
+            <th className="border p-2">الحالة</th>
+            <th className="border p-2">التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tickets.map((ticket) => (
+            <tr key={ticket.id}>
+              <td className="border p-2">{ticket.id}</td>
+              <td className="border p-2">{ticket.user_name}</td>
+              <td className="border p-2">{ticket.email}</td>
+              <td className="border p-2">{ticket.subject}</td>
+              <td className="border p-2">{ticket.status}</td>
+              <td className="border p-2">{new Date(ticket.created_at).toLocaleDateString()}</td>
             </tr>
-          </thead>
-          <tbody>
-            {tickets.map(ticket => (
-              <tr key={ticket.id} className="border-b">
-                <td className="p-4">
-                  {ticket.user_name}<br />
-                  <span className="text-xs text-gray-500">{ticket.email}</span>
-                </td>
-                <td>{ticket.subject}</td>
-                <td>
-                  <select
-                    value={ticket.status}
-                    onChange={(e) => updateStatus(ticket.id, e.target.value)}
-                    className="border rounded p-1 text-sm"
-                  >
-                    <option value="open">مفتوحة</option>
-                    <option value="in-progress">قيد المعالجة</option>
-                    <option value="closed">مغلقة</option>
-                  </select>
-                </td>
-                <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
-                <td>
-                  <Link to={`/admin/ticket/${ticket.id}`} className="text-blue-600 underline">عرض</Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
