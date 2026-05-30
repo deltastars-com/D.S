@@ -310,7 +310,7 @@ export default function AdminDashboard({ user, onNavigate }: AdminDashboardPageP
                         <td className="font-black text-secondary text-sm md:text-base">{formatCurrency(order.total)}</td>
                         <td><span className={`px-3 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase ${order.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{order.status === 'delivered' ? 'مكتمل' : order.status === 'pending' ? 'قيد الانتظار' : 'ملغي'}</span></td>
                         <td><button onClick={() => handleStatusChange(order.id, 'delivered')} className="text-emerald-600 hover:scale-110 transition-transform p-2"><CheckCircleIcon className="w-5 h-5 md:w-6 md:h-6" /></button></td>
-                      </tr>
+                      </table>
                     ))}
                   </tbody>
                 </table>
