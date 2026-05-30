@@ -12,7 +12,6 @@ export default function AdminGuard({ children }: { children: JSX.Element }) {
         setIsAdmin(false);
         return;
       }
-      // نفحص إذا كان المستخدم لديه صلاحية admin في metadata
       const role = user.user_metadata?.role || user.app_metadata?.role;
       setIsAdmin(role === 'admin');
     };
