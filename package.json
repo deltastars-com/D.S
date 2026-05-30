@@ -1,20 +1,12 @@
 {
-  "name": "delta-stars-sovereignty",
+  "name": "delta-stars",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:clean": "rm -rf dist && npm run build",
-    "preview": "vite preview",
-    "cap:sync": "npx cap sync",
-    "cap:add:android": "npx cap add android",
-    "cap:add:ios": "npx cap add ios",
-    "cap:open:android": "npx cap open android",
-    "cap:open:ios": "npx cap open ios",
-    "cap:copy": "npx cap copy",
-    "cap:update": "npx cap update"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
@@ -59,12 +51,6 @@
   },
   "overrides": {
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "tar": ">=7.0.0",
-    "glob": ">=10.0.0",
-    "rimraf": ">=5.0.0",
-    "follow-redirects": ">=1.15.6",
-    "ws": ">=8.17.1",
-    "sharp": ">=0.33.0"
+    "react-dom": "18.3.1"
   }
 }
