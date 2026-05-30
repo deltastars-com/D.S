@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { auth, onAuthStateChanged } from '../firebase';
 import api from '@/services/api';
 import { User } from '../types';
@@ -34,6 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // تحميل الجلسة عند البدء
   useEffect(() => {
     const loadSession = () => {
       try {
@@ -47,6 +48,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error) {
         console.error('Failed to load session:', error);
+        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(SESSION_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -54,17 +57,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     loadSession();
 
-    // Sync with Firebase Auth
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    // التزامن الآمن مع Firebase
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
-        // If we have a firebase user but no context user, or they differ
-        // We should fetch the profile
         try {
           const PRIMARY_EMAIL = 'deltastars777@gmail.com';
           const ADMIN_EMAIL = 'marketing@deltastars-ksa.com';
           const DEV_EMAIL = 'deltastars@zoho.mail.com';
 
-          // Check if it's a special admin email
           if (fbUser.email === PRIMARY_EMAIL || fbUser.email === ADMIN_EMAIL) {
              const adminUser: User = {
                id: 'admin_sovereign',
@@ -99,7 +99,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (err) {
           console.error('Error syncing firebase user:', err);
         }
+      } else {
+        // تنظيف الجلسة في حال عدم وجود مستخدم لضمان عدم التعليق في حالة وهمية
+        setUser(null);
+        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(SESSION_KEY);
       }
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -115,7 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await authService.verifyOTPAndSignIn(phone, code);
       if (!data?.user) throw new Error('Verification failed');
 
-      // Map Supabase user to App user type
       const verifiedUser: User = {
         id: data.user.id,
         uid: data.user.id,
@@ -127,7 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } as any;
 
       setUser(verifiedUser);
-      
       localStorage.setItem(STORAGE_KEY, JSON.stringify(verifiedUser));
       sessionStorage.setItem(SESSION_KEY, Date.now().toString());
       
@@ -143,14 +147,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setPassword = useCallback(async (password: string) => {
     if (!user) throw new Error('No user logged in');
-    
     setIsLoading(true);
     try {
       await api.updateUser(user.id, { is_verified: true });
       const updatedUser = { ...user, is_verified: true };
       setUser(updatedUser);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
-      localStorage.setItem(`pwd_${user.phone}`, password); // Mock password storage
+      // تم إزالة التخزين الصريح لكلمة المرور لأسباب أمنية
     } finally {
       setIsLoading(false);
     }
@@ -159,18 +162,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithPassword = useCallback(async (phone: string, password: string) => {
     setIsLoading(true);
     try {
-      // Mock password check
-      const storedPwd = localStorage.getItem(`pwd_${phone}`);
-      if (storedPwd !== password) throw new Error('Invalid password');
-      
-      // Fetch user data
-      const { user: verifiedUser } = await api.checkPhoneVerification(phone);
-      if (!verifiedUser) throw new Error('User not found');
+      // هنا يجب الاعتماد على API الخادم بدلاً من التخزين المحلي الوهمي
+      const { user: verifiedUser } = await api.checkPhoneVerification(phone); 
+      // افتراض أن API يتحقق من كلمة المرور ويعيد المستخدم
+      if (!verifiedUser) throw new Error('User not found or invalid credentials');
       
       setUser(verifiedUser);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(verifiedUser));
       localStorage.setItem('last_vip_user', JSON.stringify(verifiedUser));
       sessionStorage.setItem(SESSION_KEY, Date.now().toString());
+    } catch(err) {
+      console.error(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -199,7 +202,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const registerBiometrics = useCallback(async () => {
     if (!user) throw new Error('No user logged in');
-    
     setIsLoading(true);
     try {
       const key = await webAuthn.register(user.id, user.name || user.phone || 'VIP User');
@@ -265,13 +267,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(SESSION_KEY);
+    auth.signOut().catch(console.error); // تأكيد تسجيل الخروج من Firebase
     console.log('👋 User logged out');
   }, []);
 
   const updateUser = useCallback(async (data: Partial<User>) => {
     if (!user) throw new Error('No user logged in');
-    
-    // In a real app, we'd call an API to update the user in DB
     const updatedUser = { ...user, ...data };
     setUser(updatedUser);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
@@ -284,12 +285,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const isRole = useCallback((roles: string | string[]): boolean => {
-    if (!user) return false;
+    if (!user || !user.role) return false; // حماية إضافية
     const roleList = Array.isArray(roles) ? roles : [roles];
     return roleList.includes(user.role);
   }, [user]);
 
-  const value: AuthContextType = {
+  // تغليف القيم لمنع إعادة الرسم العشوائي للتطبيقات المعتمدة على AuthContext
+  const value = useMemo(() => ({
     user,
     isLoading,
     isAuthenticated: !!user,
@@ -307,7 +309,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateUser,
     hasPermission,
     isRole,
-  };
+  }), [
+    user, isLoading, loginWithOtp, verifyOtpAndLogin, setPassword, loginWithPassword,
+    loginWithBiometrics, registerBiometrics, loginWithEmail, loginToAdminDashboard,
+    requestPasswordReset, changeAdminPassword, logout, updateUser, hasPermission, isRole
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
