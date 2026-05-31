@@ -1,9 +1,7 @@
 [build]
-  command = "npm install --arch=x64 --platform=linux sharp && npm run build"
+  command = "npm install && npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
-  NPM_FLAGS = "--force"
-  # هذا السطر يمنع توقف البناء عند محاولة تحميل مكتبات الصور
   SHARP_DIST_BASE_URL = "https://github.com/lovell/sharp-libvips/releases/download/v8.15.1"
