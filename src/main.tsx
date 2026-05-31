@@ -1,9 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import './index.css';
-
-// 1. استدعاءات المزودات (Providers) - تم التأكد من المسارات
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { I18nProvider } from './components/lib/contexts/I18nContext';
 import { FirebaseProvider } from './components/lib/contexts/FirebaseContext';
@@ -13,22 +10,21 @@ import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { setupMockApi } from './components/lib/mockApi';
 
-// Initialize
+// استيراد بمسار نسبي مباشر وآمن لضمان أن Rollup يراه في بيئة Build
+import './index.css';
+
 setupMockApi();
 
-// 2. إدارة الـ Service Worker (بشكل نظيف تماماً لتجنب مشاكل الكاش)
+// تنظيف الـ Service Workers لمنع التعارض في بيئة Netlify
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (let registration of registrations) {
-      await registration.unregister();
-    }
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (let reg of regs) { await reg.unregister(); }
   });
 }
 
-// 3. المحرك الأساسي للتشغيل
 const rootElement = document.getElementById('root');
-if (!rootElement) throw new Error("Critical Mount Failure: #root element not found.");
+if (!rootElement) throw new Error("Critical Mount Failure: #root not found.");
 
 const root = createRoot(rootElement);
 
