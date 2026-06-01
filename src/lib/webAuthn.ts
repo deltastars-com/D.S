@@ -1,4 +1,3 @@
-
 /**
  * Mock implementation of WebAuthn for biometric/face recognition login.
  * In a real environment, this would use the browser's navigator.credentials API.
