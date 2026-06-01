@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Review } from '@/types';
 import { StarIcon } from './lib/contexts/Icons';
