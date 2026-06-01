@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useI18n } from './lib/contexts/I18nContext';
 import { Product, StockMovement, Invoice, Order } from '../types';
