@@ -1,4 +1,3 @@
-
 /**
  * Sovereign Biometric Engine v21.0 - Passkey Integration
  */
