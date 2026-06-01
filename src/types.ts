@@ -1,4 +1,3 @@
-
 export type Page = 'home' | 'products' | 'cart' | 'checkout' | 'login' | 'dashboard' | 'vipLogin' | 'vipDashboard' | 'wishlist' | 'showroom' | 'productDetail' | 'operations' | 'warehouse' | 'privacy' | 'security_setup' | 'trackOrder' | 'dev_console' | 'trust_center' | 'sourcing' | 'terms' | 'returns' | 'shipping' | 'driverDashboard' | 'units' | 'contact' | 'admin_dashboard';
 
 export interface Product {
