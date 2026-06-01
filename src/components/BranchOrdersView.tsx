@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Order, Branch } from '../types';
 import { useI18n, useFirebase, useToast } from './lib/contexts';
