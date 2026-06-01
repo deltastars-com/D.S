@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Product, CategoryConfig, ProductUnit } from '../types';
 import { useI18n, useToast, useFirebase } from './lib/contexts';
