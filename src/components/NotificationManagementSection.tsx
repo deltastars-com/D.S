@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useI18n, useToast, useFirebase } from './lib/contexts';
 import { BellIcon, TrashIcon } from './lib/contexts/Icons';
