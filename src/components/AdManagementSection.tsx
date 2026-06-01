@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Ad } from '../types';
 import { useI18n, useToast, useFirebase } from './lib/contexts';
