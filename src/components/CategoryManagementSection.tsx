@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CategoryConfig, CategoryKey } from '../types';
 import { useI18n, useToast, PlusIcon, TrashIcon, PencilIcon, XIcon } from './lib/contexts';
