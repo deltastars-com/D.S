@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useFirebase, useI18n, useToast, PlusIcon, TrashIcon, PencilIcon, SparklesIcon } from './lib/contexts';
 import { Promotion } from '../types';
