@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useI18n } from './lib/contexts/I18nContext';
 import { Invoice, Payment, VipClient, VipTransaction } from '../types';
