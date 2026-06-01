@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { useI18n, useToast, useFirebase } from './lib/contexts';
